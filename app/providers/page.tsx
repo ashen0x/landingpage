@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { PageContainer, SiteShell } from "@/components/layout/site-shell";
 import { fetchModels, Provider } from "@/app/data/models";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ export default function ProvidersPage() {
   const [items, setItems] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showEmptyProviders, setShowEmptyProviders] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -86,6 +88,19 @@ export default function ProvidersPage() {
     );
   }, [sortedItems, searchTerm]);
 
+  const { activeItems, emptyItems } = useMemo(() => {
+    const active: Provider[] = [];
+    const empty: Provider[] = [];
+    for (const item of filteredItems) {
+      if ((item.supported_models?.length || 0) > 0) {
+        active.push(item);
+      } else {
+        empty.push(item);
+      }
+    }
+    return { activeItems: active, emptyItems: empty };
+  }, [filteredItems]);
+
   return (
     <SiteShell>
       <section className="py-12 md:py-20">
@@ -94,7 +109,7 @@ export default function ProvidersPage() {
             <div className="text-left">
               <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-4 tracking-tight">Providers</h1>
               <p className="text-base md:text-lg text-muted-foreground max-w-xl font-light leading-relaxed">
-                Explore the {formatCompactCount(items.length)} providers powering the decentralized Routstr marketplace.
+                Explore the {formatCompactCount(activeItems.length)} providers powering the decentralized Routstr marketplace.
               </p>
             </div>
           </div>
@@ -125,12 +140,12 @@ export default function ProvidersPage() {
                   <div className="hidden md:block col-span-2 h-3 bg-border rounded w-1/3" />
                 </div>
               ))
-            ) : filteredItems.length === 0 ? (
+            ) : activeItems.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground text-sm font-mono">
                 No providers found.
               </div>
             ) : (
-              filteredItems.map((provider) => {
+              activeItems.map((provider) => {
                 const modelCount = provider.supported_models?.length || 0;
                 return (
                   <Link
@@ -157,6 +172,55 @@ export default function ProvidersPage() {
               })
             )}
           </div>
+
+          {/* Providers with 0 models — collapsed by default */}
+          {!isLoading && emptyItems.length > 0 && (
+            <div className="mt-8">
+              <button
+                type="button"
+                onClick={() => setShowEmptyProviders((prev) => !prev)}
+                className="flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                aria-expanded={showEmptyProviders}
+              >
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${showEmptyProviders ? "rotate-180" : ""}`}
+                />
+                {showEmptyProviders ? "Hide" : "Show"} providers with 0 models
+                <span className="text-muted-foreground/70">
+                  ({formatCompactCount(emptyItems.length)})
+                </span>
+              </button>
+
+              {showEmptyProviders && (
+                <div className="flex flex-col mt-4">
+                  {emptyItems.map((provider) => {
+                    return (
+                      <Link
+                        key={provider.id}
+                        href={`/providers/${encodeURIComponent(provider.id)}`}
+                        className="grid grid-cols-12 gap-4 py-6 border-b border-border/30 px-4 hover:bg-card transition-colors group items-center"
+                      >
+                        <div className="col-span-8 md:col-span-8 flex flex-col justify-center min-w-0">
+                          <span className="font-bold text-sm text-foreground group-hover:underline decoration-muted-foreground underline-offset-4 truncate block">
+                            {provider.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate mt-0.5">
+                            {provider.description || "Decentralized AI provider node."}
+                          </span>
+                        </div>
+                        <div className="hidden md:flex col-span-2 text-xs text-muted-foreground">
+                          0 models
+                        </div>
+                        <div className="hidden md:flex col-span-2 text-xs text-muted-foreground">
+                          {provider.version ? `v${provider.version}` : "—"}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </PageContainer>
       </section>
     </SiteShell>
