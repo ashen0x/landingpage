@@ -126,6 +126,36 @@ test("Seven recorded days, including observed zeros, keep their exact daily subt
   }
 });
 
+test("Weekly restores a full total when seven daily records include a partial day", async () => {
+  const selectedRange = range("2026-06-04", "2026-06-11");
+  for (const interval of [60, 360]) {
+    const parsed = await providers(legacy({
+      created_at: (selectedRange.end + interval * 60_000) / 1000,
+      windows: {
+        "365d": { window_hours: 365 * 24, model_usage_mix: {
+          interval_minutes: 10080, metrics: [row("2026-06-04", 168)],
+        } },
+        "7d": { window_hours: 7 * 24, model_usage_mix: {
+          interval_minutes: interval,
+          metrics: Array.from({ length: 7 * 1440 / interval }, (_, index) => ({
+            ...row("2026-06-04", interval / 60),
+            timestamp: new Date(selectedRange.start + index * interval * 60_000).toISOString(),
+          })),
+        } },
+      },
+    }));
+    const daily = selectStats(parsed, selectedRange);
+    assert.equal(daily.reportedProviderDays, 7);
+    assert.equal(sum(daily), 168 - interval / 60);
+    const weekly = selectStats(parsed, selectedRange, "weekly");
+    assert.equal(sum(weekly), 168);
+    assert.equal(sum(weekly, "total_revenue_msats"), 16800);
+    assert.equal(sum(weekly, "total_tokens"), 3360);
+    assertPartitions(weekly);
+    assert.deepEqual(selectStats(parsed, selectedRange), daily);
+  }
+});
+
 test("Weekly rows cannot cross selected-range edges, and daily edge contributions stay exact", async () => {
   const parsed = await providers(legacy({ weeks: [row("2026-06-04", 70)], days: [row("2026-06-05", 3), row("2026-06-10", 4)] }));
   for (const [start, end, expected] of [["2026-06-05", "2026-06-11", 7], ["2026-06-04", "2026-06-10", 3]]) {

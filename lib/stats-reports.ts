@@ -393,17 +393,19 @@ function selectWeeklyStats(providers: StatsProvider[], range: CompletedRange) {
     for (const { provider, days } of selected) {
       let source = emptyDay(start);
       let sourceReported = 0;
+      let sourceFullDays = 0;
       let sourceComplete = 0;
       for (let index = (start - range.start) / DAY_MS; index < (end - range.start) / DAY_MS; index++) {
         const day = days[index];
         if (day.coverage === "missing") continue;
         addDay(source, day);
         sourceReported++;
+        if (day.coveredMinutes === 1440) sourceFullDays++;
         if (day.coverage === "complete") sourceComplete++;
         const date = day.timestamp.slice(0, 10);
         if (latestDataDay === null || date > latestDataDay) latestDataDay = date;
       }
-      if (bucketDays === 7 && sourceReported < 7 && !provider.reports.some((report) => report.format === "v2" &&
+      if (bucketDays === 7 && sourceFullDays < 7 && !provider.reports.some((report) => report.format === "v2" &&
           report.days.some((day) => Date.parse(day.timestamp) >= weekStart && Date.parse(day.timestamp) < end))) {
         let replacement: { report: StatsReport; week: StatsDay } | null = null;
         for (const report of provider.reports) {
