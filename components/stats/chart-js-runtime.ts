@@ -4,11 +4,12 @@ import {
   CategoryScale,
   Chart as ChartJS,
   LinearScale,
+  LogarithmicScale,
 } from "chart.js";
 import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
-ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale);
+ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, LogarithmicScale);
 
 type SeriesPalette = readonly [
   string,
