@@ -15,7 +15,9 @@ import type {
   ChartOptions,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
+import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   getSeriesColor,
   useChartTheme,
@@ -33,7 +35,10 @@ import { formatCompactNumber } from "@/lib/number-format";
 type DisplayUnit = "msat" | "sat" | "usd";
 
 export interface ModelUsageMixMetric {
+  coverage?: "complete" | "partial" | "missing";
+  token_coverage?: "complete" | "partial" | "missing";
   timestamp: string;
+  period_end?: string;
   total_successful: number;
   total_revenue_msats: number;
   total_tokens: number;
@@ -58,6 +63,8 @@ interface TopModelsUsageChartProps {
   displayUnit?: DisplayUnit;
   usdPerSat?: number | null;
   mode?: ChartMode;
+  grouping?: "daily" | "weekly";
+  onGroupingChange?: (grouping: "daily" | "weekly") => void;
 }
 
 
@@ -93,10 +100,16 @@ function parseBucketDate(value: string): Date | null {
 function formatBucketTimestamp(
   label: string,
   intervalMinutes: number,
-  hoursBack: number
+  periodEnd?: string
 ): string {
   const date = parseBucketDate(label);
   if (!date) return label;
+  if (periodEnd) {
+    const end = new Date(Date.parse(periodEnd) - 86_400_000);
+    const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" };
+    const startLabel = date.toLocaleDateString([], options);
+    return `${startLabel}${end.getTime() > date.getTime() ? ` to ${end.toLocaleDateString([], options)}` : ""} UTC`;
+  }
   if (intervalMinutes >= 28 * 24 * 60) {
     return `${date.toLocaleString([], {
       month: "long",
@@ -104,7 +117,7 @@ function formatBucketTimestamp(
       timeZone: "UTC",
     })} UTC`;
   }
-  if (intervalMinutes <= 6 * 60 || hoursBack <= 48) {
+  if (intervalMinutes <= 6 * 60) {
     return date.toLocaleString([], {
       month: "long",
       day: "numeric",
@@ -126,8 +139,7 @@ function formatBucketTimestamp(
 function formatAxisTimestamp(
   timestamp: string,
   hasMultipleDays: boolean,
-  intervalMinutes: number,
-  hoursBack: number
+  intervalMinutes: number
 ): string {
   const date = parseBucketDate(timestamp);
   if (!date) return "";
@@ -140,7 +152,7 @@ function formatAxisTimestamp(
     });
   }
 
-  const shouldShowTime = intervalMinutes <= 6 * 60 || hoursBack <= 48;
+  const shouldShowTime = intervalMinutes <= 6 * 60;
   if (shouldShowTime && hasMultipleDays) {
     return date.toLocaleString([], {
       month: "short",
@@ -164,9 +176,9 @@ function formatAxisTimestamp(
       timeZone: "UTC",
     });
   }
-  return date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
     timeZone: "UTC",
   });
 }
@@ -255,7 +267,11 @@ function readModelValue(
   return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
 
-function readBucketTotal(metric: ModelUsageMixMetric, mode: ChartMode): number {
+function bucketCoverage(metric: ModelUsageMixMetric, mode: ChartMode) {
+  return mode === "tokens" ? metric.token_coverage ?? metric.coverage : metric.coverage;
+}
+
+export function readBucketTotal(metric: ModelUsageMixMetric, mode: ChartMode): number {
   const value =
     mode === "requests"
       ? Number(metric.total_successful ?? 0)
@@ -293,12 +309,15 @@ export function TopModelsUsageChart({
   displayUnit = "sat",
   usdPerSat = null,
   mode = "requests",
+  grouping = "daily",
+  onGroupingChange,
 }: TopModelsUsageChartProps) {
   const [showAllModels, setShowAllModels] = useState(false);
+  const [scale, setScale] = useState<"linear" | "logarithmic">("linear");
   const isMobile = useIsMobile();
   const chartTheme = useChartTheme();
   const readoutId = useId();
-  const chartRef = useRef<ChartJS<"bar", number[], string> | null>(null);
+  const chartRef = useRef<ChartJS<"bar", (number | null)[], string> | null>(null);
   const chartShellRef = useRef<HTMLDivElement | null>(null);
   const guideRef = useRef<HTMLDivElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -383,7 +402,7 @@ export function TopModelsUsageChart({
       );
       const compact = formatCompactNumber(converted, {
         standardMinimumFractionDigits: revenueDisplayUnit === "usd" ? 2 : 0,
-        standardMaximumFractionDigits: revenueDisplayUnit === "usd" ? 2 : 0,
+        standardMaximumFractionDigits: revenueDisplayUnit === "usd" ? 2 : revenueDisplayUnit === "sat" ? 3 : 0,
         compactMaximumFractionDigits: 2,
       });
       return revenueDisplayUnit === "usd"
@@ -456,12 +475,14 @@ export function TopModelsUsageChart({
     return daySet.size > 1;
   }, [mixMetrics]);
 
-  const chartData = useMemo<ChartData<"bar", number[], string>>(
+  const chartData = useMemo<ChartData<"bar", (number | null)[], string>>(
     () => ({
       labels: mixMetrics.map((metric) => metric.timestamp),
-      datasets: plotSeries.map((series) => ({
+      // A log axis cannot stack: a segment's height would follow its position,
+      // not its value. Log compares each period's total from one baseline.
+      datasets: (scale === "linear" ? plotSeries : [{ key: "total", color: chartTheme.foreground, values: stackTotals }]).map((series) => ({
         label: series.key,
-        data: series.values,
+        data: series.values.map((value, index) => bucketCoverage(mixMetrics[index], mode) === "missing" ? null : value),
         backgroundColor: series.color,
         borderWidth: 0,
         borderSkipped: false,
@@ -471,7 +492,10 @@ export function TopModelsUsageChart({
         barPercentage: 1,
       })),
     }),
-    [mixMetrics, plotSeries]
+    [chartTheme.foreground, mixMetrics, mode, plotSeries, scale, stackTotals]
+  );
+  const hasPositiveValues = chartData.datasets.some((dataset) =>
+    dataset.data.some((value) => value !== null && value > 0)
   );
 
   const chartOptions = useMemo<ChartOptions<"bar">>(
@@ -497,22 +521,35 @@ export function TopModelsUsageChart({
               formatAxisTimestamp(
                 mixMetrics[index]?.timestamp ?? "",
                 hasMultipleDays,
-                mix.interval_minutes,
-                mix.hours_back
+                mix.interval_minutes
               ),
           },
         },
         y: {
+          type: scale,
+          display: scale === "linear" || hasPositiveValues,
           stacked: true,
+          // Log uses a positive baseline below its smallest value.
           beginAtZero: true,
-          min: 0,
+          min: scale === "linear" ? 0 : undefined,
           border: { display: false },
           grid: { color: chartTheme.grid },
           ticks: {
             color: chartTheme.mutedForeground,
             font: { family: chartTheme.fontFamily, size: 11 },
-            maxTicksLimit: 5,
-            callback: (value) => formatValue(Number(value || 0)),
+            maxTicksLimit: scale === "linear" ? 5 : undefined,
+            major: { enabled: scale === "logarithmic" },
+            callback: (value, index, ticks) => {
+              const numeric = Number(value);
+              if (scale === "logarithmic") {
+                if (!ticks[index]?.major || numeric < 1) return undefined;
+                if (
+                  mode === "revenue" && revenueDisplayUnit === "usd" &&
+                  convertRevenueMsats(numeric, revenueDisplayUnit, usdPerSat) < 0.01
+                ) return undefined;
+              }
+              return formatValue(numeric);
+            },
           },
         },
       },
@@ -523,10 +560,14 @@ export function TopModelsUsageChart({
       chartTheme.mutedForeground,
       formatValue,
       hasMultipleDays,
+      hasPositiveValues,
       isMobile,
-      mix.hours_back,
       mix.interval_minutes,
       mixMetrics,
+      mode,
+      revenueDisplayUnit,
+      scale,
+      usdPerSat,
     ]
   );
 
@@ -572,11 +613,13 @@ export function TopModelsUsageChart({
         timestampRef.current.textContent = formatBucketTimestamp(
           metric.timestamp,
           mix.interval_minutes,
-          mix.hours_back
+          metric.period_end
         );
       }
+      const coverage = bucketCoverage(metric, mode);
+      const totalLabel = coverage === "missing" ? "Unavailable" : `${formatValue(bucketTotals[boundedIndex] ?? 0)}${coverage === "partial" ? " (partial reports)" : ""}`;
       if (totalRef.current) {
-        totalRef.current.textContent = formatValue(bucketTotals[boundedIndex] ?? 0);
+        totalRef.current.textContent = totalLabel;
       }
       const orderedSeries = plotSeries
         .map((series) => ({
@@ -607,6 +650,7 @@ export function TopModelsUsageChart({
       }
       if (emptyTooltipRef.current) {
         emptyTooltipRef.current.hidden = visibleRows > 0;
+        emptyTooltipRef.current.textContent = coverage === "missing" ? "No usable count for this period." : coverage === "partial" ? "No count in the received partial reports." : "Reported zero for this period.";
       }
 
       const chart = chartRef.current;
@@ -616,12 +660,12 @@ export function TopModelsUsageChart({
         const timestamp = formatBucketTimestamp(
           metric.timestamp,
           mix.interval_minutes,
-          mix.hours_back
+          metric.period_end
         );
         chart.canvas.setAttribute("aria-valuenow", String(boundedIndex + 1));
         chart.canvas.setAttribute(
           "aria-valuetext",
-          `${timestamp}, total ${formatValue(bucketTotals[boundedIndex] ?? 0)}`
+          `${timestamp}, total ${totalLabel}`
         );
         if (showOverlay && shell && tooltip) {
           const shellBounds = shell.getBoundingClientRect();
@@ -680,17 +724,17 @@ export function TopModelsUsageChart({
         liveRegionRef.current.textContent = `${formatBucketTimestamp(
           metric.timestamp,
           mix.interval_minutes,
-          mix.hours_back
-        )}. Total ${formatValue(bucketTotals[boundedIndex] ?? 0)}. ${details}`;
+          metric.period_end
+        )}. Total ${totalLabel}. ${details}`;
       }
     },
     [
       bucketTotals,
       formatValue,
       hideBucketOverlay,
-      mix.hours_back,
       mix.interval_minutes,
       mixMetrics,
+      mode,
       plotSeries,
       stackTotals,
     ]
@@ -814,6 +858,7 @@ export function TopModelsUsageChart({
   }, [hideBucketOverlay, selectBucket, selectBucketAtPixel]);
 
   useEffect(() => {
+    if (liveRegionRef.current) liveRegionRef.current.textContent = "";
     const frame = window.requestAnimationFrame(() => {
       const selectedTimestamp = selectedTimestampRef.current;
       const matchingIndex = selectedTimestamp
@@ -826,7 +871,7 @@ export function TopModelsUsageChart({
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [chartData, mixMetrics, selectBucket]);
+  }, [chartData, mixMetrics, scale, selectBucket]);
 
   useEffect(() => {
     setShowAllModels(false);
@@ -890,11 +935,68 @@ export function TopModelsUsageChart({
   return (
     <div>
       <section className="border border-border bg-card px-4 py-5 shadow-sm shadow-black/5 sm:px-6 sm:py-6 dark:shadow-black/20">
-        <div className="min-w-0">
-          <h3 className="text-xl font-bold text-foreground">Model Usage</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Reported {mode} over time, split by model.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-foreground">Model Usage</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Reported {mode} by {grouping === "weekly" ? "week" : "day"}, {scale === "linear" ? "split by model" : "as period totals"}.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {onGroupingChange ? (
+              <div role="group" aria-label="Chart interval" className="flex border border-border p-1">
+                {(["daily", "weekly"] as const).map((value) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={grouping === value ? "secondary" : "ghost"}
+                    aria-label={value === "daily" ? "Daily bars" : "Weekly bars"}
+                    aria-pressed={grouping === value}
+                    onClick={() => {
+                      hideBucketOverlay();
+                      onGroupingChange(value);
+                    }}
+                  >
+                    {value === "daily" ? "Daily" : "Weekly"}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            <div role="group" aria-label="Chart scale" className="flex border border-border p-1">
+              {(["linear", "logarithmic"] as const).map((value) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={scale === value ? "secondary" : "ghost"}
+                  aria-label={value === "linear" ? "Linear scale" : "Logarithmic scale"}
+                  aria-pressed={scale === value}
+                  onClick={() => {
+                    hideBucketOverlay();
+                    setScale(value);
+                  }}
+                >
+                  {value === "linear" ? "Linear" : "Log"}
+                </Button>
+              ))}
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="About chart scales"
+                  className="text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <CircleHelp className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] space-y-2 text-xs text-muted-foreground">
+                <p>Log shows each period&apos;s total so small values stay visible. Tooltips keep every model&apos;s exact value and share.</p>
+                <p>Zero cannot be plotted on Log. Inspect a period for zero or missing data.</p>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
         <div className="pt-2 sm:pt-3">
@@ -913,7 +1015,7 @@ export function TopModelsUsageChart({
                 redraw={false}
                 role="slider"
                 tabIndex={0}
-                aria-label={`Model usage by ${mode}. Use Left and Right arrow keys to inspect time buckets.`}
+                aria-label={`Model usage by ${mode} on a ${scale} scale. Use Left and Right arrow keys to inspect time buckets.`}
                 aria-valuemin={1}
                 aria-valuemax={mixMetrics.length}
                 aria-valuenow={mixMetrics.length}
@@ -932,6 +1034,11 @@ export function TopModelsUsageChart({
                 style={{ touchAction: "pan-y pinch-zoom" }}
                 fallbackContent="Model usage chart. Use the arrow keys to inspect time buckets."
               />
+              {scale === "logarithmic" && !hasPositiveValues ? (
+                <p className="pointer-events-none absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-xs text-muted-foreground">
+                  No positive values for Log. Inspect a period for its exact value.
+                </p>
+              ) : null}
               <div
                 ref={guideRef}
                 aria-hidden="true"
