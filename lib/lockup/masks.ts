@@ -6,12 +6,7 @@ import {
 
 export const WORD = "ROUTSTR";
 
-// - Routstr mark: lib/brand.
-// - Bitcoin: the official bitcoin.org logo (public domain), disc with the B knocked out.
-// - Lightning Network: Wikimedia Commons "Lightning Network.svg", CC BY-SA 4.0,
-//   disc with the bolt knocked out.
-// - Cashu: the official pixel nut from cashu.space, public/lockup/cashu.png.
-// - Nostr: the community icon by Andrea Nicolini, github.com/mbarulli/nostr-logo, CC0.
+// The marks the sign cycles through, in order: Routstr, Bitcoin, Lightning, Cashu, Nostr.
 export type Glyph =
   | { kind: "path"; box: number; min?: number; fill: string[]; cut?: string[]; cutScale?: number }
   | { kind: "image"; src: string };
@@ -47,7 +42,11 @@ export const GLYPHS: Glyph[] = [
   },
 ];
 
+// Mask ids: 0 the word, 1..n the marks centred, then each mark in each of the
+// three reel windows, then the message.
 export const SHAPES = 1 + GLYPHS.length;
+export const MSG_ID = SHAPES + 3 * GLYPHS.length;
+export const reelBit = (id: number, reel: number) => (id === 0 ? 1 : 1 << (SHAPES + 3 * (id - 1) + reel));
 
 export type Images = Map<string, HTMLImageElement>;
 
@@ -147,5 +146,18 @@ export function buildMasks(w: number, h: number, font: string, images: Images): 
     masks.push(m);
     bright.push(g.kind === "image" ? m : null);
   }
+  const reelSize = Math.min(h * 0.82, (w / 3) * 0.72);
+  for (const g of GLYPHS) {
+    for (let r = 0; r < 3; r++) {
+      const m = drawGlyph(o, g, (w * (2 * r + 1)) / 6, reelSize, w, h, images) ?? empty();
+      masks.push(m);
+      bright.push(g.kind === "image" ? m : null);
+    }
+  }
   return { masks, bright, wordSize: word.size };
+}
+
+export function messageMask(w: number, h: number, font: string, size: number, text: string): Uint8ClampedArray | null {
+  const o = makeScratch(w, h);
+  return o ? drawText(o, text, w, h, font, size).data : null;
 }
