@@ -54,6 +54,8 @@ export interface Model {
   alias_ids?: readonly string[];
   /** True when the node published no sats_pricing (the zeros are filler). */
   sats_unpriced?: boolean;
+  /** True when the node says the model can reason before it answers. */
+  reasons?: boolean;
   top_provider?: {
     context_length: number;
     max_completion_tokens: number | null;
@@ -96,6 +98,7 @@ type RawModel = {
   sats_pricing?: Partial<Model["sats_pricing"]>;
   per_request_limits?: PerRequestLimits | null;
   alias_ids?: unknown;
+  reasoning?: unknown;
 };
 
 function isUnknownProviderName(name: string): boolean {
@@ -257,6 +260,7 @@ export async function fetchModels(
                       )
                     : undefined,
                   sats_unpriced: !rawModel.sats_pricing,
+                  reasons: Boolean(rawModel.reasoning),
                   top_provider: {
                     context_length: contextLength,
                     max_completion_tokens: null,

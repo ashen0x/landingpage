@@ -1,6 +1,8 @@
 import { createPool } from "@/lib/nostr";
 import {
   indexListPrices,
+  indexListOpen,
+  indexListScores,
   latestReviewLabels,
   parseModelIdMappings,
   type ModelIdMappings,
@@ -59,18 +61,35 @@ export async function fetchModelIdMappings(): Promise<ModelIdMappings> {
   }
 }
 
-/** OpenRouter's public USD rates by model id. Empty when unreachable. */
-export async function fetchListPrices(
+export interface ListData {
+  /** USD rates by model id. */
+  readonly prices: Map<string, TokenRates>;
+  /** The intelligence index by model id, for the models that have one. */
+  readonly scores: Map<string, number>;
+  /** Whether a model's weights are public, by model id. */
+  readonly open: Map<string, boolean>;
+}
+
+/** What OpenRouter's public model list says, read once. Empty when unreachable. */
+export async function fetchListData(
   fetchImpl: typeof fetch = fetch
-): Promise<Map<string, TokenRates>> {
+): Promise<ListData> {
   try {
     const response = await fetchImpl(LIST_PRICES_URL, {
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) return new Map();
+    if (!response.ok) return { prices: new Map(), scores: new Map(), open: new Map() };
     const payload = (await response.json()) as { data?: unknown };
-    return indexListPrices(Array.isArray(payload.data) ? payload.data : []);
+    const models = Array.isArray(payload.data) ? payload.data : [];
+    return { prices: indexListPrices(models), scores: indexListScores(models), open: indexListOpen(models) };
   } catch {
-    return new Map();
+    return { prices: new Map(), scores: new Map(), open: new Map() };
   }
+}
+
+/** OpenRouter's public USD rates by model id. Empty when unreachable. */
+export async function fetchListPrices(
+  fetchImpl: typeof fetch = fetch
+): Promise<Map<string, TokenRates>> {
+  return (await fetchListData(fetchImpl)).prices;
 }

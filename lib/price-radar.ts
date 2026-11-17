@@ -203,6 +203,49 @@ export function indexListPrices(
   return byId;
 }
 
+/**
+ * Whether a model's weights are public, by model id: OpenRouter's list names
+ * the Hugging Face repository of every model that has one.
+ */
+export function indexListOpen(
+  models: readonly { id?: unknown; hugging_face_id?: unknown }[]
+): Map<string, boolean> {
+  const open = new Map<string, boolean>();
+  for (const model of models) {
+    if (typeof model.id !== "string") continue;
+    open.set(model.id, typeof model.hugging_face_id === "string" && model.hugging_face_id !== "");
+  }
+  return open;
+}
+
+/**
+ * The Artificial Analysis intelligence index OpenRouter's list carries for a
+ * model, under the same ids as its prices: the full id, and the bare name
+ * unless two vendors score that name differently.
+ */
+export function indexListScores(
+  models: readonly {
+    id?: unknown;
+    benchmarks?: { artificial_analysis?: { intelligence_index?: unknown } | null } | null;
+  }[]
+): Map<string, number> {
+  const byId = new Map<string, number>();
+  const byBareName = new Map<string, number | null>();
+  for (const model of models) {
+    const score = model.benchmarks?.artificial_analysis?.intelligence_index;
+    if (typeof model.id !== "string" || typeof score !== "number") continue;
+    byId.set(model.id, score);
+    const bare = model.id.slice(model.id.lastIndexOf("/") + 1);
+    if (bare === model.id) continue;
+    const seen = byBareName.get(bare);
+    byBareName.set(bare, seen === undefined || seen === score ? score : null);
+  }
+  byBareName.forEach((score, bare) => {
+    if (score !== null && !byId.has(bare)) byId.set(bare, score);
+  });
+  return byId;
+}
+
 export interface RadarNode {
   readonly url: string;
   readonly name: string;
@@ -216,6 +259,8 @@ export interface RadarEntry {
   readonly approved: boolean;
   /** Sats for one basket, the number apps rank on. */
   readonly sats: number;
+  /** The node's USD price for one basket, or null when it names none. */
+  readonly usd: number | null;
   /** The node's USD price for the basket over the list price for it. */
   readonly multiplier: number | null;
   /** 1 = apps send this model's requests here. Null when not approved. */
@@ -284,6 +329,7 @@ export function buildRadar(
         name: node.name,
         approved: node.approved,
         sats,
+        usd,
         multiplier: usd !== null && listUsd ? usd / listUsd : null,
         rank: node.approved ? index + 1 : null,
         cutToFirstPct:

@@ -1,0 +1,939 @@
+/* The inner pages, set in the home page's language: a quiet label, a large
+   title, thin lines instead of boxes, pills instead of square buttons. They
+   draw with the page tokens, so they follow the light and dark themes. */
+
+.pg {
+  --ink: var(--foreground);
+  --dim: color-mix(in srgb, var(--foreground) 62%, transparent);
+  --faint: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --hair: color-mix(in srgb, var(--foreground) 12%, transparent);
+  --gold: var(--brand);
+  --pad: clamp(20px, 5.4vw, 88px);
+  --sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  --out: cubic-bezier(0.16, 1, 0.3, 1);
+  padding: clamp(36px, 8vh, 88px) var(--pad) clamp(64px, 12vh, 128px);
+  color: var(--dim);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.pg :focus-visible {
+  outline: 1.5px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── the head of a page ─────────────────────────────────────────────────── */
+
+.pg-label {
+  margin: 0 0 clamp(14px, 2.4vh, 26px);
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.pg h1.pg-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2.5rem, 5.6vw, 5.4rem);
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.046em;
+}
+/* each line of the title rises out of its own mask as the page opens */
+.pg-title span {
+  display: block;
+  overflow: hidden;
+  margin: -0.08em -0.06em -0.16em;
+  padding: 0.08em 0.06em 0.16em;
+}
+.pg-title span > i {
+  display: block;
+  font-style: normal;
+  white-space: nowrap;
+  animation: pg-rise 1200ms var(--out) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 120ms);
+}
+@keyframes pg-rise {
+  from {
+    transform: translateY(118%);
+  }
+}
+.pg-lede {
+  max-width: 36rem;
+  margin: clamp(16px, 2.8vh, 30px) 0 0;
+  color: var(--dim);
+  font-size: clamp(1.02rem, 1.3vw, 1.2rem);
+  line-height: 1.45;
+  letter-spacing: -0.012em;
+  text-wrap: pretty;
+  animation: pg-in 1000ms ease 380ms both;
+}
+.pg-lede b {
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes pg-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* ── the tools above a list: a search field and small switches ──────────── */
+
+.pg-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+  margin-top: clamp(30px, 5.6vh, 60px);
+  animation: pg-in 1000ms ease 480ms both;
+}
+.pg-search {
+  position: relative;
+  display: flex;
+  flex: 1 1 22rem;
+  align-items: center;
+  max-width: 36rem;
+  height: 54px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background) 62%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  backdrop-filter: blur(16px);
+  transition: box-shadow 260ms;
+}
+.pg-search:focus-within {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 42%, transparent);
+}
+.pg-search svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin: 0 12px 0 18px;
+  color: var(--faint);
+}
+.pg-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  outline: none;
+}
+.pg-search input:focus-visible {
+  outline: none;
+}
+.pg-search input::placeholder {
+  color: var(--faint);
+}
+.pg-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.pg-key,
+.pg-search button {
+  flex: none;
+  margin-right: 14px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pg-key {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+.pg-search button:hover {
+  color: var(--ink);
+}
+/* a switch between a few choices: plain words, the chosen one underlined in gold */
+.pg-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  font-size: 14.5px;
+}
+.pg-switch button {
+  position: relative;
+  padding: 6px 0;
+  color: var(--faint);
+  white-space: nowrap;
+  transition: color 200ms;
+}
+.pg-switch button::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transition: transform 420ms var(--out);
+}
+.pg-switch button:hover,
+.pg-switch button[aria-pressed="true"] {
+  color: var(--ink);
+}
+.pg-switch button[aria-pressed="true"]::after {
+  transform: scaleX(1);
+}
+.pg-switch span {
+  align-self: center;
+  color: var(--faint);
+}
+.pg-far {
+  margin-left: auto;
+}
+.pg-count {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── narrowing a list: chips for the kind of thing, and a row of makers' marks ── */
+
+.pg-sift {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 22px;
+  margin-top: 18px;
+  animation: pg-in 1000ms ease 530ms both;
+}
+.pg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pg-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--dim);
+  font-size: 14px;
+  transition: color 200ms, background-color 260ms, box-shadow 260ms;
+}
+.pg-chips button:hover {
+  box-shadow: inset 0 0 0 1px var(--faint);
+  color: var(--ink);
+}
+.pg-chips i {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+.pg-chips button[aria-pressed="true"] {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--background);
+}
+.pg-chips button[aria-pressed="true"] i {
+  color: color-mix(in srgb, var(--background) 62%, transparent);
+}
+/* the marks take what the chips leave of the row (the page shows as many as fit), and on a
+   wide screen they keep to its far end */
+.pg-makers {
+  display: flex;
+  flex: 1 1 0;
+  gap: 6px;
+  min-width: 10rem;
+  /* room for the focus ring inside the clip; a mark too many is never seen */
+  margin: -5px;
+  padding: 5px;
+  overflow: hidden;
+}
+@media (min-width: 1200px) {
+  .pg-makers {
+    justify-content: flex-end;
+  }
+}
+.pg-makers button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--dim);
+  font-size: 16px;
+  transition: color 200ms, box-shadow 260ms;
+}
+.pg-makers button:hover {
+  color: var(--ink);
+}
+.pg-makers button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--gold);
+  color: var(--ink);
+}
+.pg-makers svg,
+.pg-mark svg {
+  width: 1em;
+  height: 1em;
+}
+/* a maker's mark in a soft square */
+.pg-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink);
+  font-size: 17px;
+}
+.pg-mark[data-none] {
+  color: var(--faint);
+}
+
+/* ── a list of rows under thin lines ────────────────────────────────────── */
+
+.pg-list {
+  /* brought into sight for a new order, it stops under the bar at the top */
+  scroll-margin-top: 68px;
+  margin-top: clamp(22px, 4vh, 40px);
+  animation: pg-in 1000ms ease 580ms both;
+}
+.pg-cols,
+.pg-row {
+  display: grid;
+  grid-template-columns: var(--cols);
+  align-items: center;
+  gap: 0 20px;
+  padding: 0 4px;
+}
+/* the names of the columns stay in sight while the list scrolls */
+.pg-cols {
+  position: sticky;
+  top: 68px;
+  z-index: 5;
+  height: 46px;
+  margin: 0 calc(var(--pad) * -1);
+  padding: 0 calc(var(--pad) + 4px);
+  background: color-mix(in srgb, var(--background) 93%, transparent);
+  box-shadow: inset 0 -1px 0 var(--hair);
+  backdrop-filter: blur(16px) saturate(1.4);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.pg-cols button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  transition: color 200ms;
+}
+.pg-cols button:hover,
+.pg-cols button[data-sort] {
+  color: var(--ink);
+}
+.pg-cols svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0.5;
+}
+.pg-cols button[data-sort] svg {
+  color: var(--gold);
+  opacity: 1;
+}
+.pg-cols small {
+  margin-left: 8px;
+  font-size: inherit;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  opacity: 0.8;
+}
+.pg-end {
+  justify-self: end;
+  text-align: right;
+}
+/* a line at the head of a list: where its numbers come from */
+.pg-note {
+  margin: 0;
+  padding: 13px 4px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  color: var(--faint);
+  font-size: 13px;
+}
+.pg-row {
+  position: relative;
+  min-height: 70px;
+  /* brought into sight by the arrow keys, it stops clear of the bars at the top */
+  scroll-margin: 126px 0 24px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  color: var(--dim);
+  font-size: 14.5px;
+  transition: background-color 300ms, padding 500ms var(--out);
+}
+.pg-row:hover {
+  padding-left: 14px;
+  background: color-mix(in srgb, var(--foreground) 3.5%, transparent);
+}
+/* the row whose model is shown beside the list, where there is room for a second side */
+@media (min-width: 1200px) {
+  .pg-row[data-on] {
+    padding-left: 14px;
+    background: color-mix(in srgb, var(--foreground) 5%, transparent);
+    box-shadow: inset 2px 0 0 var(--gold), inset 0 -1px 0 var(--hair);
+  }
+}
+.pg-row > * {
+  min-width: 0;
+}
+.pg-name {
+  display: grid;
+  gap: 3px;
+  padding: 12px 0;
+}
+.pg-name b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 16.5px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* a name with its maker's mark before it */
+.pg-marked {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 14px;
+  align-items: center;
+}
+.pg-marked > .pg-mark,
+.pg-marked > b:last-child {
+  grid-row: 1 / span 2;
+}
+.pg-name code,
+.pg-num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.pg-name code {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-one {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-one i {
+  margin-left: 8px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-style: normal;
+}
+.pg-num {
+  color: var(--ink);
+  font-size: 14px;
+}
+.pg-num[data-quiet] {
+  color: var(--dim);
+}
+/* cheaper here than the price it is set against */
+.pg-num[data-under] {
+  color: var(--gold);
+}
+.pg-go {
+  justify-self: end;
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 300ms, transform 500ms var(--out), color 300ms;
+}
+.pg-row:hover .pg-go {
+  color: var(--gold);
+  opacity: 1;
+  transform: none;
+}
+.pg-only-mid {
+  display: none !important;
+}
+
+/* ── two sides: the list, and beside it the one you picked ──────────────── */
+
+.pg-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
+  gap: clamp(28px, 4vw, 64px);
+  align-items: start;
+}
+.pg-two .pg-cols {
+  margin: 0;
+  padding: 0 4px;
+}
+.pg-panel {
+  position: sticky;
+  top: 92px;
+  max-height: calc(100svh - 112px);
+  margin-top: clamp(22px, 4vh, 40px);
+  padding: 28px 28px 24px;
+  overflow-y: auto;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  scrollbar-width: none;
+  animation: pg-in 1000ms ease 640ms both;
+}
+.pg-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pg-head .pg-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 22px;
+}
+.pg-about {
+  display: -webkit-box;
+  margin: 16px 0 0;
+  overflow: hidden;
+  font-size: 14.5px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.pg-panel h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.4rem, 1.9vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+.pg-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+.pg-id code {
+  overflow: hidden;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-id button {
+  flex: none;
+  /* wide enough for "Copied", so nothing beside it moves when it says so */
+  min-width: 4.4rem;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 200ms, box-shadow 200ms;
+}
+.pg-id button:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--faint);
+}
+.pg-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  margin: 22px 0 0;
+}
+.pg-facts dd {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 15px;
+}
+.pg-facts dt {
+  font-size: 13px;
+}
+/* what a model takes in or gives back, as small pictures */
+.pg-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-height: 1.5em;
+}
+.pg-kinds svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.pg-facts dt a,
+.pg-note a {
+  box-shadow: 0 1px 0 var(--hair);
+  transition: color 200ms, box-shadow 200ms;
+}
+.pg-facts dt a:hover,
+.pg-note a:hover {
+  box-shadow: 0 1px 0 var(--faint);
+  color: var(--ink);
+}
+.pg-panel h3 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 26px 0 2px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.pg-panel h3 small {
+  font-size: inherit;
+}
+/* where each seller stands on price: a tick each on one line, the picked one in gold */
+.pg-lane {
+  position: relative;
+  margin: 12px 0 4px;
+}
+.pg-lane[data-listed] {
+  padding: 20px 0 22px;
+}
+.pg-lane > div {
+  position: relative;
+  height: 20px;
+}
+.pg-lane > div::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--hair);
+}
+.pg-lane i {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--dim);
+}
+.pg-lane i[data-best] {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--gold);
+  box-shadow: 0 0 12px var(--gold);
+}
+.pg-lane i[data-list] {
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed var(--dim);
+  background: none;
+}
+.pg-lane > span {
+  position: absolute;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.pg-lane-top {
+  top: 0;
+}
+.pg-lane-foot {
+  bottom: 0;
+  color: var(--dim);
+}
+.pg-lane-foot[data-under] {
+  color: var(--gold);
+}
+.pg-sellers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-sellers li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.6rem 4.6rem;
+  align-items: center;
+  height: 40px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  font-size: 14.5px;
+}
+.pg-sellers a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 200ms;
+}
+.pg-sellers a:hover {
+  color: var(--ink);
+}
+.pg-sellers span {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* the cheapest node is the one a request goes to */
+.pg-sellers li[data-best] :is(a, span) {
+  color: var(--gold);
+}
+/* a node without an approving review: apps do not send requests there */
+.pg-sellers li[data-off] :is(a, span) {
+  color: var(--faint);
+}
+.pg-sellers a i {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pg-code {
+  margin: 22px 0 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  scrollbar-width: none;
+}
+.pg-code i {
+  color: var(--gold);
+  font-style: normal;
+}
+.pg-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 4px 0;
+  box-shadow: 0 1px 0 var(--hair);
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: color 200ms, box-shadow 200ms;
+}
+.pg-more:hover {
+  box-shadow: 0 1px 0 var(--gold);
+  color: var(--gold);
+}
+.pg-more svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* the end of what a long list shows, and the way to more of it */
+.pg-rest {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 0;
+  padding: 24px 4px 0;
+}
+.pg-rest button {
+  padding: 4px 0;
+  box-shadow: 0 1px 0 var(--hair);
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: color 200ms, box-shadow 200ms;
+}
+.pg-rest button:hover {
+  box-shadow: 0 1px 0 var(--gold);
+  color: var(--gold);
+}
+
+/* rows still on their way */
+.pg-ghost {
+  pointer-events: none;
+}
+.pg-ghost span {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--hair);
+  animation: pg-breathe 1600ms ease-in-out infinite;
+  animation-delay: calc(var(--i) * 90ms);
+}
+@keyframes pg-breathe {
+  50% {
+    opacity: 0.4;
+  }
+}
+.pg-none {
+  padding: clamp(48px, 12vh, 110px) 0;
+  color: var(--dim);
+  text-align: center;
+}
+.pg-none button {
+  margin-left: 10px;
+  color: var(--ink);
+  box-shadow: 0 1px 0 var(--hair);
+}
+.pg-none button:hover {
+  color: var(--gold);
+}
+
+/* beside the card on a screen that is only just wide enough: a slimmer card, and below that one column fewer */
+@media (min-width: 1200px) and (max-width: 1439px) {
+  .pg-two {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+  }
+}
+@media (min-width: 1200px) and (max-width: 1359px) {
+  .pg-two :is(.pg-cols, .pg-row) {
+    grid-template-columns: var(--cols-tight, var(--cols));
+  }
+  .pg-hide-tight {
+    display: none !important;
+  }
+}
+/* the same column goes where the list stands alone on a small tablet */
+@media (min-width: 761px) and (max-width: 899px) {
+  .pg-cols,
+  .pg-row {
+    grid-template-columns: var(--cols-mid-tight, var(--cols-mid, var(--cols))) !important;
+  }
+  .pg-hide-tight {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1199px) {
+  .pg-two {
+    display: block;
+  }
+  .pg-two .pg-cols {
+    margin: 0 calc(var(--pad) * -1);
+    padding: 0 calc(var(--pad) + 4px);
+  }
+  .pg-panel {
+    display: none;
+  }
+  .pg-only-mid {
+    display: revert !important;
+  }
+  .pg-cols,
+  .pg-row {
+    grid-template-columns: var(--cols-mid, var(--cols));
+  }
+  .pg-hide-mid {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .pg-cols,
+  .pg-row {
+    grid-template-columns: var(--cols-narrow, var(--cols-mid, var(--cols)));
+    gap: 0 12px;
+  }
+  .pg-hide,
+  .pg-only-mid {
+    display: none !important;
+  }
+  .pg-row {
+    min-height: 66px;
+  }
+  .pg-marked {
+    column-gap: 10px;
+  }
+  .pg-name b {
+    font-size: 15.5px;
+  }
+  /* the chips keep to one line and scroll sideways */
+  .pg-sift {
+    gap: 10px;
+  }
+  .pg-chips {
+    flex-wrap: nowrap;
+    max-width: calc(100% + 10px);
+    margin: -5px;
+    padding: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .pg-chips button {
+    flex: none;
+  }
+  .pg-row .pg-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .pg-far {
+    margin-left: 0;
+  }
+  .pg-row:hover {
+    padding-left: 4px;
+  }
+  .pg-count {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-title span > i,
+  .pg-lede,
+  .pg-tools,
+  .pg-sift,
+  .pg-list,
+  .pg-panel {
+    animation: none;
+  }
+}
