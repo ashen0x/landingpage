@@ -1,67 +1,28 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import BackButton from "@/components/BackButton";
 import Link from "next/link";
-import Header from "../../../components/Header";
-import Footer from "../../../components/Footer";
-import {
-  Model,
-  Provider,
-  getProviderFromModelName,
-  getModelNameWithoutProvider,
-  fetchModels as fetchModelsDirect,
-} from "@/app/data/models";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { SiteShell } from "@/components/layout/site-shell";
+import { Mark } from "@/components/layout/Mark";
+import { Kinds } from "@/components/layout/Kinds";
+import { companyIn } from "@/components/stats/model-company-icon";
+import { ModelReviews } from "@/components/ModelReviews";
+import { Model, Provider, getModelNameWithoutProvider, fetchModels as fetchModelsDirect } from "@/app/data/models";
 import { useModels } from "@/app/contexts/ModelsContext";
 import { usePricingView } from "@/app/contexts/PricingContext";
-
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  Copy,
-  Check
-} from "lucide-react";
-
-import { PriceCompChart } from "@/components/client/PriceCompChart";
-import ReactMarkdown from "react-markdown";
-import { ModelReviews } from "@/components/ModelReviews";
+import { fetchListPrices, fetchReviewLabels } from "@/lib/api/price-sources";
+import { isApproved, requestCost, type TokenRates } from "@/lib/price-radar";
+import { usageKey, useModelUsage } from "@/lib/model-usage";
 import { getLocalCashuToken, setLocalCashuToken } from "@/utils/storageUtils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  formatCompactContextLength,
-} from "@/lib/number-format";
+import { wholeSentences } from "@/lib/describe";
+import { formatCompactContextLength, formatCompactCount, formatCompactPriceValue } from "@/lib/number-format";
+import "@/components/layout/pages.css";
+import "./model.css";
 
 type CodeLanguage = "curl" | "javascript" | "python";
-
-const codeTokenClasses = {
-  command: "text-code-blue",
-  keyword: "text-code-purple",
-  string: "text-code-orange",
-  property: "text-code-lightblue",
-  symbol: "text-code-plain",
-  value: "text-code-yellow",
-  plain: "text-code-plain",
-} as const;
-
-type CodeTokenKind = keyof typeof codeTokenClasses;
-
-function CodeTok({
-  kind,
-  children,
-}: {
-  kind: CodeTokenKind;
-  children: ReactNode;
-}) {
-  return <span className={codeTokenClasses[kind]}>{children}</span>;
-}
 
 function decodeSegments(segments: string[]): string[] {
   return segments.map((s) => decodeURIComponent(s));
@@ -71,35 +32,13 @@ function isUnknownProviderName(name: string | null | undefined): boolean {
   return (name ?? "").trim().toLowerCase() === "unknown";
 }
 
-function inferProviderFromModel(modelName: string, modelId: string): string {
-  const namedProvider = getProviderFromModelName(modelName);
-  if (!isUnknownProviderName(namedProvider)) {
-    return namedProvider;
-  }
-
-  const id = modelId.toLowerCase();
-  if (id.includes("openai") || id.includes("gpt-") || id.startsWith("o1") || id.startsWith("o3")) return "OpenAI";
-  if (id.includes("claude")) return "Anthropic";
-  if (id.includes("gemini") || id.includes("gemma")) return "Google";
-  if (id.includes("qwen")) return "Qwen";
-  if (id.includes("mistral")) return "Mistral";
-  if (id.includes("minimax")) return "MiniMax";
-  if (id.includes("grok") || id.includes("x-ai") || id.includes("xai")) return "xAI";
-  if (id.includes("glm") || id.includes("zai") || id.includes("z-ai")) return "Z.ai";
-  if (id.includes("deepseek")) return "DeepSeek";
-  if (id.includes("kimi") || id.includes("moonshot")) return "Moonshot";
-
-  return namedProvider;
-}
-
 export default function ModelDetailPage() {
   const params = useParams();
-  const { currency } = usePricingView();
+  const { currency, setCurrency } = usePricingView();
   const { loading, error, findModel } = useModels();
   const [providersWithPricing, setProvidersWithPricing] = useState<{ provider: Provider; model: Model }[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [pricingLoading, setPricingLoading] = useState(true);
-  const [apiSelectorOpen, setApiSelectorOpen] = useState(false);
 
   const modelIdParts = params.modelId as string[];
   const decodedModelIdParts = decodeSegments(modelIdParts);
@@ -113,12 +52,30 @@ export default function ModelDetailPage() {
   const [descExpanded, setDescExpanded] = useState<boolean>(false);
   const [idCopied, setIdCopied] = useState(false);
 
-  const storageBaseUrl = (() => {
-    const selected = providersWithPricing.find((p) => p.provider.id === selectedProviderId)?.provider || providersWithPricing[0]?.provider;
-    const base = selected?.endpoint_url || "";
-    if (!base) return "https://api.routstr.com";
-    return base.replace(/\/v1$/, "");
-  })();
+  const usage = useModelUsage();
+  const [labels, setLabels] = useState<Map<string, string>>(() => new Map());
+  const [listPrices, setListPrices] = useState<Map<string, TokenRates>>(() => new Map());
+  useEffect(() => {
+    let active = true;
+    void fetchReviewLabels().then((found) => active && setLabels(found));
+    void fetchListPrices().then((found) => active && setListPrices(found));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // approved nodes first: that is where apps send a request. Within each, the loading order (by cost) holds.
+  const place = (url: string) => url.trim().replace(/\/+$/, "").toLowerCase();
+  const approved = (provider: Provider) =>
+    labels.size === 0 ||
+    isApproved(
+      providersWithPricing.filter((entry) => place(entry.provider.endpoint_url) === place(provider.endpoint_url)).map((entry) => entry.provider.pubkey),
+      labels
+    );
+  const sellers = [...providersWithPricing].sort((a, b) => Number(approved(b.provider)) - Number(approved(a.provider)));
+  const selected = sellers.find((entry) => entry.provider.id === selectedProviderId) ?? sellers[0];
+  // a token is kept per node: for the node the code below is written for
+  const storageBaseUrl = (selected?.provider.endpoint_url || "https://api.routstr.com").replace(/\/v1$/, "");
 
   useEffect(() => {
     try {
@@ -153,10 +110,11 @@ export default function ModelDetailPage() {
                 const aUnknown = isUnknownProviderName(a.provider.name);
                 const bUnknown = isUnknownProviderName(b.provider.name);
                 if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
-                return (a.model.sats_pricing?.completion ?? 0) - (b.model.sats_pricing?.completion ?? 0);
+                const cost = (entry: { model: Model }) =>
+                  (entry.model.sats_unpriced ? null : requestCost(entry.model.sats_pricing)) || Infinity;
+                return cost(a) - cost(b) || 0;
               });
             });
-            setSelectedProviderId((prev) => prev || provider.id);
           }
         });
 
@@ -178,349 +136,254 @@ export default function ModelDetailPage() {
     return () => { active = false; };
   }, [decodedModelId, findModel]);
 
-  if (loading && !model) {
-    return (
-      <main className="flex min-h-screen flex-col bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground font-mono">
-        <Header />
-        <div className="px-[clamp(1rem,5vw,5rem)] py-12 max-w-[1800px] mx-auto w-full">
-           <div className="h-4 bg-border rounded w-24 mb-12 animate-pulse" />
-           <div className="h-10 bg-border rounded w-1/2 mb-4 animate-pulse" />
-           <div className="h-4 bg-border rounded w-1/4 mb-12 animate-pulse" />
-           <div className="space-y-4">
-             <div className="h-4 bg-border rounded w-full animate-pulse" />
-             <div className="h-4 bg-border rounded w-5/6 animate-pulse" />
-           </div>
-        </div>
-        <div className="max-w-[1800px] mx-auto w-full mt-auto">
-          <Footer />
-        </div>
-      </main>
-    );
-  }
-
   if (error || notFound) {
     return (
-      <main className="flex min-h-screen flex-col bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground font-mono">
-        <Header />
-        <div className="flex-1 flex flex-col items-start justify-center px-[clamp(1rem,5vw,5rem)] max-w-[1800px] mx-auto w-full">
-          <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-4 tracking-tight">{error ? "Error" : "Model not found"}</h1>
-          <p className="text-muted-foreground mb-8">{error || "The model you're looking for doesn't exist."}</p>
-          <Button asChild variant="outline">
-            <Link href="/models">Back to models</Link>
-          </Button>
-        </div>
-        <div className="max-w-[1800px] mx-auto w-full mt-auto">
-          <Footer />
-        </div>
-      </main>
+      <SiteShell>
+        <section className="pg md">
+          <h1>{error ? "Something went wrong" : "No such model"}</h1>
+          <p className="pg-lede">{error || "No node sells a model under this name right now."}</p>
+          <Link href="/models" className="pg-more">
+            All models <ArrowRight strokeWidth={1.5} aria-hidden="true" />
+          </Link>
+        </section>
+      </SiteShell>
+    );
+  }
+  if (!model) {
+    return (
+      <SiteShell>
+        <section className="pg md">
+          <p className="pg-lede">{loading || pricingLoading ? "Asking the nodes about this model." : ""}</p>
+        </section>
+      </SiteShell>
     );
   }
 
-  if (!model) return null;
-
-  const selectedProvider = providersWithPricing.find((p) => p.provider.id === selectedProviderId)?.provider || providersWithPricing[0]?.provider;
-  const provider = inferProviderFromModel(model.name, model.id);
-  const displayName = getModelNameWithoutProvider(model.name);
-  const chatModelId = model.id.split("/").pop() || model.id;
-  const providerBaseUrl = selectedProvider?.endpoint_url ? (selectedProvider.endpoint_url.endsWith("/v1") ? selectedProvider.endpoint_url : `${selectedProvider.endpoint_url.replace(/\/$/, "")}/v1`) : "";
-
-  const copyModelId = () => {
-    navigator.clipboard.writeText(model.id);
-    setIdCopied(true);
-    setTimeout(() => setIdCopied(false), 2000);
+  const sats = currency === "sats";
+  const price = (value: number | undefined) =>
+    !value || !(value > 0)
+      ? "—"
+      : value * 1_000_000 < 0.005
+        ? "<0.01"
+        : formatCompactPriceValue(value * 1_000_000, { fixedSmallDecimals: !sats });
+  const base = selected?.provider.endpoint_url
+    ? selected.provider.endpoint_url.endsWith("/v1")
+      ? selected.provider.endpoint_url
+      : `${selected.provider.endpoint_url.replace(/\/$/, "")}/v1`
+    : "https://api.routstr.com/v1";
+  const name = getModelNameWithoutProvider(model.name);
+  const token = tokenInput.trim() || "YOUR_TOKEN";
+  const code: Record<CodeLanguage, string> = {
+    curl: `curl -X POST ${base}/chat/completions \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer ${token}" \\\n  -d '{\n    "model": "${model.id}",\n    "messages": [\n      { "role": "user", "content": "Hello Nostr" }\n    ]\n  }'`,
+    javascript: `import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: '${base}',\n  apiKey: '${token}'\n});\n\nconst completion = await openai.chat.completions.create({\n  model: '${model.id}',\n  messages: [{ role: 'user', content: 'Hello Nostr' }]\n});\nconsole.log(completion.choices[0].message);`,
+    python: `from openai import OpenAI\n\nclient = OpenAI(\n    base_url="${base}",\n    api_key="${token}"\n)\n\ncompletion = client.chat.completions.create(\n    model="${model.id}",\n    messages=[{"role": "user", "content": "Hello Nostr"}]\n)\nprint(completion.choices[0].message.content)`,
   };
-
-  const doCopy = async () => {
+  const copy = async (text: string, done: (on: boolean) => void) => {
     try {
-      const tokenForCode = (tokenInput ?? "").trim();
-      let code = "";
-      if (activeTab === "curl") {
-        code = `curl -X POST ${providerBaseUrl || "https://api.routstr.com/v1"}/chat/completions \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer ${tokenForCode}" \\\n  -d '{\n    "model": "${model?.id}",\n    "messages": [\n      { "role": "user", "content": "Hello Nostr" }\n    ]\n  }'\n`;
-      } else if (activeTab === "javascript") {
-        code = `import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: '${providerBaseUrl || "https://api.routstr.com/v1"}',\n  apiKey: '${tokenForCode}'\n});\n\nasync function main() {\n  const completion = await openai.chat.completions.create({\n    model: '${model?.id}',\n    messages: [\n      { role: 'user', content: 'Hello Nostr' }\n    ]\n  });\n  console.log(completion.choices[0].message);\n}\n\nmain();\n`;
-      } else {
-        code = `from openai import OpenAI\n\nclient = OpenAI(\n    base_url="${providerBaseUrl || "https://api.routstr.com/v1"}",\n    api_key="${tokenForCode}"\n)\n\ncompletion = client.chat.completions.create(\n    model="${model?.id}",\n    messages=[\n        {"role": "user", "content": "Hello Nostr"}\n    ]\n)\nprint(completion.choices[0].message.content)\n`;
-      }
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch {}
+      await navigator.clipboard.writeText(text);
+      done(true);
+      window.setTimeout(() => done(false), 1500);
+    } catch {
+      // clipboard blocked: the text is still selectable
+    }
   };
+  const requests = usage.requests?.[usageKey(model.id)] ?? 0;
+  // nodes describe a model in their own words: the fullest of them is shown
+  const about = [model, ...sellers.map((entry) => entry.model)]
+    .map((one) => wholeSentences(one.description ?? ""))
+    .reduce((longest, text) => (text.length > longest.length ? text : longest), "");
+  const takes = model.architecture?.input_modalities ?? [];
+  const gives = model.architecture?.output_modalities ?? [];
+  const best = sellers[0] && approved(sellers[0].provider) && !sellers[0].model.sats_unpriced ? sellers[0] : null;
+  const mine = selected ? requestCost(selected.model.pricing) : null;
+  const theirs = requestCost(listPrices.get(model.id));
+  // a price above zero never reads as 100% under
+  const against = mine && theirs ? Math.max(-99, Math.round((mine / theirs - 1) * 100)) : null;
 
   return (
-    <main className="flex min-h-screen flex-col bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground font-mono">
-      <Header />
+    <SiteShell>
+      <section className="pg md">
+        <Link href="/models" className="md-back">
+          <ArrowLeft strokeWidth={1.5} aria-hidden="true" /> All models
+        </Link>
+        <div className="md-head">
+          <Mark company={companyIn(`${model.id} ${model.name}`)} />
+          <h1>{name}</h1>
+        </div>
+        <div className="md-under">
+          <p className="pg-id">
+            <code>{model.id}</code>
+            <button type="button" onClick={() => copy(model.id, setIdCopied)}>
+              {idCopied ? "Copied" : "Copy"}
+            </button>
+          </p>
+          <a href={`https://chat.routstr.com/?model=${encodeURIComponent(model.id.split("/").pop() || model.id)}`} className="pg-more">
+            Try it in the chat <ArrowRight strokeWidth={1.5} aria-hidden="true" />
+          </a>
+        </div>
 
-      <section className="py-12 md:py-20">
-        <div className="max-w-[1800px] mx-auto px-[clamp(1rem,5vw,5rem)]">
-          <BackButton fallbackHref="/models" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-12">
-            <ArrowLeft className="w-3 h-3" /> Back to models
-          </BackButton>
-
-          <div className="mb-16 flex flex-col items-start justify-between gap-8 md:flex-row">
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2 tracking-tight">{displayName}</h1>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 font-light italic leading-relaxed">by {provider}</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="inline-flex max-w-full items-center gap-2 break-all rounded border border-border bg-muted px-3 py-1 text-[10px] font-mono text-muted-foreground">
-                  <span className="text-muted-foreground">ID:</span> {model.id}
+        <div className="md-two">
+          <div className="md-main">
+            {about && (
+              <>
+                <div className="md-about" data-short={!descExpanded && about.length > 300 ? "" : undefined}>
+                  <ReactMarkdown>{about}</ReactMarkdown>
                 </div>
-                <button 
-                  onClick={copyModelId}
-                  className="p-1.5 rounded border border-border bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                  title="Copy model ID"
+                {about.length > 300 && (
+                  <button type="button" className="md-toggle" onClick={() => setDescExpanded(!descExpanded)}>
+                    {descExpanded ? "Show less" : "Read it all"}
+                  </button>
+                )}
+              </>
+            )}
+
+            <dl className="pg-facts" style={{ marginTop: "clamp(26px, 5vh, 44px)" }}>
+              {model.context_length > 0 && (
+                <div>
+                  <dd>{formatCompactContextLength(model.context_length)}</dd>
+                  <dt>context</dt>
+                </div>
+              )}
+              {takes.length > 0 && (
+                <div>
+                  <dd>
+                <Kinds list={takes} />
+              </dd>
+                  <dt>takes in</dt>
+                </div>
+              )}
+              {gives.length > 0 && (
+                <div>
+                  <dd>
+                <Kinds list={gives} />
+              </dd>
+                  <dt>gives back</dt>
+                </div>
+              )}
+              {requests > 0 && (
+                <div>
+                  <dd>{formatCompactCount(requests)}</dd>
+                  <dt>requests, 30 days</dt>
+                </div>
+              )}
+              {model.created > 0 && (
+                <div>
+                  <dd>{new Date(model.created * 1000).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}</dd>
+                  <dt>released</dt>
+                </div>
+              )}
+                </dl>
+
+            <h2>
+              {pricingLoading && sellers.length === 0 ? "Asking the nodes" : `Sold by ${sellers.length} ${sellers.length === 1 ? "node" : "nodes"}`}
+              <span className="md-unit">
+                <span className="pg-switch" role="group" aria-label="Show prices in">
+                  <button type="button" aria-pressed={sats} onClick={() => setCurrency("sats")}>
+                    sats
+                  </button>
+                  <button type="button" aria-pressed={!sats} onClick={() => setCurrency("usd")}>
+                    USD
+                  </button>
+                </span>
+                per 1M · input / output
+              </span>
+            </h2>
+            <div className="md-sellers">
+              {sellers.map((entry) => (
+                <button
+                  key={entry.provider.id}
+                  type="button"
+                  aria-pressed={entry === selected}
+                  data-best={entry === best || undefined}
+                  data-off={!approved(entry.provider) || undefined}
+                  title="Write the code below for this node"
+                  onClick={() => setSelectedProviderId(entry.provider.id)}
                 >
-                  {idCopied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                  <span>
+                    {entry.provider.name}
+                    {!approved(entry.provider) && <i>not approved</i>}
+                  </span>
+                  <span>{price(sats ? entry.model.sats_pricing?.prompt : entry.model.pricing?.prompt)}</span>
+                  <span>{price(sats ? entry.model.sats_pricing?.completion : entry.model.pricing?.completion)}</span>
                 </button>
-              </div>
+              ))}
             </div>
-            <Button asChild className="w-full sm:w-auto">
-              <Link href={`https://chat.routstr.com/?model=${encodeURIComponent(chatModelId)}`} target="_blank" rel="noopener noreferrer">
-                Try model
-                <ArrowUpRight className="size-4" />
-              </Link>
-            </Button>
+
           </div>
 
-          <div className="w-full space-y-24">
-            {/* Description */}
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-6">Description</h2>
-              <div 
-                className={`prose prose-sm md:prose-base dark:prose-invert max-w-none text-muted-foreground leading-relaxed transition-all relative ${!descExpanded ? 'max-h-48 overflow-hidden [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]' : ''}`}
-              >
-                <ReactMarkdown>{model.description || "No description available for this model."}</ReactMarkdown>
-              </div>
-              {model.description && model.description.length > 300 && (
-                <button onClick={() => setDescExpanded(!descExpanded)} className="text-xs text-foreground hover:underline mt-4">
-                  {descExpanded ? "Show less" : "Read full description"}
-                </button>
-              )}
-            </div>
-
-            {/* Pricing Comparison */}
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-8">Price Comparison</h2>
-              {pricingLoading && providersWithPricing.length === 0 ? (
-                <div className="space-y-4 animate-pulse">
-                  {[1, 2, 3].map(i => <div key={i} className="h-12 bg-muted rounded border border-border" />)}
-                </div>
-              ) : (
-                <PriceCompChart
-                  data={providersWithPricing.map((entry) => ({
-                    providerName: entry.provider.name,
-                    promptPrice:
-                      currency === "sats"
-                        ? (entry.model.sats_pricing?.prompt || 0) * 1_000_000
-                        : (entry.model.pricing?.prompt || 0) * 1_000_000,
-                    completionPrice:
-                      currency === "sats"
-                        ? (entry.model.sats_pricing?.completion || 0) * 1_000_000
-                        : (entry.model.pricing?.completion || 0) * 1_000_000,
-                  }))}
-                  currencyLabel={currency === "sats" ? "sats / 1M tokens" : "usd / 1M tokens"}
-                  fixedSmallDecimals={currency === "usd"}
-                  unitSuffix={currency === "sats" ? "sats/1M tokens" : "USD/1M tokens"}
-                />
-              )}
-            </div>
-
-            {/* Integration */}
-            <div>
-              <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-xl font-bold text-foreground">Integration</h2>
-                {providersWithPricing.length > 1 && (
-                  <Popover open={apiSelectorOpen} onOpenChange={setApiSelectorOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="h-7 border-border bg-transparent text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        {selectedProvider?.name || "Select provider"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="bg-background border-border p-1 w-48">
-                      {providersWithPricing.map(p => (
-                        <button 
-                          key={p.provider.id} 
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted text-muted-foreground hover:text-foreground rounded"
-                          onClick={() => { setSelectedProviderId(p.provider.id); setApiSelectorOpen(false); }}
-                        >
-                          {p.provider.name}
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
-
-              <div className="flex flex-col overflow-hidden rounded border border-border bg-card">
-                <div className="flex flex-col gap-2 border-b border-border px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
-                  <Tabs
-                    value={activeTab}
-                    onValueChange={(value) => setActiveTab(value as CodeLanguage)}
-                    className="w-full sm:w-auto"
-                  >
-                    <TabsList variant="line" className="h-8 w-full justify-start overflow-x-auto whitespace-nowrap sm:w-auto">
-                      {(["curl", "javascript", "python"] as CodeLanguage[]).map((lang) => (
-                        <TabsTrigger
-                          key={lang}
-                          value={lang}
-                          className="h-7 text-xs capitalize"
-                        >
-                          {lang}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={doCopy}
-                    className="h-7 self-end text-[10px] text-muted-foreground hover:bg-transparent hover:text-foreground sm:self-auto"
-                  >
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
-                </div>
-                <div className="p-4 overflow-x-auto min-h-[200px] bg-muted">
-                  <pre className="text-xs leading-relaxed text-code-plain font-mono">
-                    {activeTab === 'curl' && (
-                      <code>
-                        <CodeTok kind="command">curl</CodeTok>{" "}
-                        <CodeTok kind="plain">-X POST</CodeTok>{" "}
-                        <CodeTok kind="string">{providerBaseUrl || "https://api.routstr.com/v1"}/chat/completions</CodeTok>{" "}
-                        <CodeTok kind="symbol">\</CodeTok><br/>
-                        {"  "}<CodeTok kind="plain">-H</CodeTok>{" "}
-                        <CodeTok kind="string">{"\"Content-Type: application/json\""}</CodeTok>{" "}
-                        <CodeTok kind="symbol">\</CodeTok><br/>
-                        {"  "}<CodeTok kind="plain">-H</CodeTok>{" "}
-                        <CodeTok kind="string">{'"Authorization: Bearer "'}</CodeTok>
-                        <Input
-                          value={tokenInput} 
-                          onChange={e => setTokenInput(e.target.value)} 
-                          onBlur={() => setLocalCashuToken(storageBaseUrl, tokenInput || "")}
-                          className="mx-0.5 inline-flex h-6 w-24 rounded-none border-x-0 border-t-0 border-b-border bg-transparent px-1 py-0 text-xs text-code-yellow shadow-none focus-visible:border-b-foreground focus-visible:ring-0"
-                          placeholder="token"
-                        />
-                        <CodeTok kind="string">{'"'}</CodeTok>{" "}
-                        <CodeTok kind="symbol">\</CodeTok><br/>
-                        {"  "}<CodeTok kind="plain">-d</CodeTok>{" "}
-                        <CodeTok kind="string">{"'{"}</CodeTok><br/>
-                        {"    "}<CodeTok kind="property">{"\"model\": "}</CodeTok>
-                        <CodeTok kind="string">{`"${model.id}"`}</CodeTok>,<br/>
-                        {"    "}<CodeTok kind="property">{"\"messages\": ["}</CodeTok><br/>
-                        {"      "}<CodeTok kind="symbol">{`{`}</CodeTok>{" "}
-                        <CodeTok kind="property">{"\"role\": "}</CodeTok>
-                        <CodeTok kind="string">{"\"user\""}</CodeTok>,{" "}
-                        <CodeTok kind="property">{"\"content\": "}</CodeTok>
-                        <CodeTok kind="string">{"\"Hello\""}</CodeTok>{" "}
-                        <CodeTok kind="symbol">{`}`}</CodeTok><br/>
-                        {"    "}<CodeTok kind="property">]</CodeTok><br/>
-                        {"  "}<CodeTok kind="string">{"}'"}</CodeTok>
-                      </code>
-                    )}
-                    {activeTab === 'javascript' && (
-                      <code>
-                        <CodeTok kind="keyword">import</CodeTok>{" "}
-                        <CodeTok kind="value">OpenAI</CodeTok>{" "}
-                        <CodeTok kind="keyword">from</CodeTok>{" "}
-                        <CodeTok kind="string">{"'openai'"}</CodeTok>;<br/><br/>
-                        <CodeTok kind="keyword">const</CodeTok>{" "}
-                        <CodeTok kind="plain">openai</CodeTok> ={" "}
-                        <CodeTok kind="keyword">new</CodeTok>{" "}
-                        <CodeTok kind="value">OpenAI</CodeTok>(<CodeTok kind="symbol">{`{`}</CodeTok><br/>
-                        {"  "}<CodeTok kind="property">baseURL</CodeTok>:{" "}
-                        <CodeTok kind="string">{`'${providerBaseUrl || "https://api.routstr.com/v1"}'`}</CodeTok>,<br/>
-                        {"  "}<CodeTok kind="property">apiKey</CodeTok>:{" "}
-                        <CodeTok kind="string">{"'"}</CodeTok>
-                        <Input
-                          value={tokenInput} 
-                          onChange={e => setTokenInput(e.target.value)} 
-                          onBlur={() => setLocalCashuToken(storageBaseUrl, tokenInput || "")}
-                          className="mx-0.5 inline-flex h-6 w-24 rounded-none border-x-0 border-t-0 border-b-border bg-transparent px-1 py-0 text-xs text-code-yellow shadow-none focus-visible:border-b-foreground focus-visible:ring-0"
-                          placeholder="token"
-                        />
-                        <CodeTok kind="string">{"'"}</CodeTok><br/>
-                        <CodeTok kind="symbol">{`}`}</CodeTok>);<br/><br/>
-                        <CodeTok kind="keyword">async function</CodeTok>{" "}
-                        <CodeTok kind="value">main</CodeTok>(){" "}
-                        <CodeTok kind="symbol">{`{`}</CodeTok><br/>
-                        {"  "}<CodeTok kind="keyword">const</CodeTok>{" "}
-                        <CodeTok kind="plain">res</CodeTok> ={" "}
-                        <CodeTok kind="keyword">await</CodeTok>{" "}
-                        <CodeTok kind="plain">openai.chat.completions.create</CodeTok>(<CodeTok kind="symbol">{`{`}</CodeTok><br/>
-                        {"    "}<CodeTok kind="property">model</CodeTok>:{" "}
-                        <CodeTok kind="string">{`'${model.id}'`}</CodeTok>,<br/>
-                        {"    "}<CodeTok kind="property">messages</CodeTok>: [<CodeTok kind="symbol">{`{`}</CodeTok>{" "}
-                        <CodeTok kind="property">role</CodeTok>: <CodeTok kind="string">{"'user'"}</CodeTok>,{" "}
-                        <CodeTok kind="property">content</CodeTok>: <CodeTok kind="string">{"'Hello'"}</CodeTok>{" "}
-                        <CodeTok kind="symbol">{`}`}</CodeTok>]<br/>
-                        {"  "}<CodeTok kind="symbol">{`}`}</CodeTok>);<br/>
-                        <CodeTok kind="symbol">{`}`}</CodeTok>
-                      </code>
-                    )}
-                    {activeTab === 'python' && (
-                      <code>
-                        <CodeTok kind="keyword">from</CodeTok>{" "}
-                        <CodeTok kind="plain">openai</CodeTok>{" "}
-                        <CodeTok kind="keyword">import</CodeTok>{" "}
-                        <CodeTok kind="value">OpenAI</CodeTok><br/><br/>
-                        <CodeTok kind="plain">client</CodeTok> = <CodeTok kind="value">OpenAI</CodeTok>(<br/>
-                        {"    "}<CodeTok kind="property">base_url</CodeTok>=<CodeTok kind="string">{`"${providerBaseUrl || "https://api.routstr.com/v1"}"`}</CodeTok>,<br/>
-                        {"    "}<CodeTok kind="property">api_key</CodeTok>=<CodeTok kind="string">{`"`}</CodeTok>
-                        <Input
-                          value={tokenInput} 
-                          onChange={e => setTokenInput(e.target.value)} 
-                          onBlur={() => setLocalCashuToken(storageBaseUrl, tokenInput || "")}
-                          className="mx-0.5 inline-flex h-6 w-24 rounded-none border-x-0 border-t-0 border-b-border bg-transparent px-1 py-0 text-xs text-code-yellow shadow-none focus-visible:border-b-foreground focus-visible:ring-0"
-                          placeholder="token"
-                        />
-                        <CodeTok kind="string">{`"`}</CodeTok><br/>
-                        )<br/><br/>
-                        <CodeTok kind="plain">res</CodeTok> = <CodeTok kind="plain">client.chat.completions.create</CodeTok>(<br/>
-                        {"    "}<CodeTok kind="property">model</CodeTok>=<CodeTok kind="string">{`"${model.id}"`}</CodeTok>,<br/>
-                        {"    "}<CodeTok kind="property">messages</CodeTok>=[<CodeTok kind="symbol">{`{`}</CodeTok><CodeTok kind="property">{"\"role\""}</CodeTok>: <CodeTok kind="string">{"\"user\""}</CodeTok>, <CodeTok kind="property">{"\"content\""}</CodeTok>: <CodeTok kind="string">{"\"Hello\""}</CodeTok><CodeTok kind="symbol">{`}`}</CodeTok>]<br/>
-                        )
-                      </code>
-                    )}
-                  </pre>
-                </div>
-              </div>
-            </div>
-
-            {/* Technical Specifications */}
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-8">Technical Specifications</h2>
-              <div className="space-y-0 border-t border-border">
-                {[
-                  { label: "Created", value: new Date(model.created * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) },
-                  { label: "Context Length", value: `${formatCompactContextLength(model.context_length)} tokens` },
-                  { label: "Modality", value: model.architecture.modality },
-                  { label: "Tokenizer", value: model.architecture.tokenizer },
-                ].map((spec, i) => (
-                  <div key={i} className="flex justify-between py-4 border-b border-border/50 text-sm">
-                    <span className="text-muted-foreground">{spec.label}</span>
-                    <span className="text-foreground font-mono">{spec.value}</span>
+          <aside className="md-side">
+            {selected && (
+              <div className="md-goes" data-picked={selected !== best || undefined}>
+                <p>{selected === best ? "A request goes to" : "You picked"}</p>
+                <b>{selected.provider.name}</b>
+                <dl>
+                  <div>
+                    <dd>{price(sats ? selected.model.sats_pricing?.prompt : selected.model.pricing?.prompt)}</dd>
+                    <dt>input</dt>
                   </div>
-                ))}
+                  <div>
+                    <dd>{price(sats ? selected.model.sats_pricing?.completion : selected.model.pricing?.completion)}</dd>
+                    <dt>output</dt>
+                  </div>
+                  {against !== null && (
+                    <div>
+                      <dd data-under={against < 0 || undefined}>
+                        {against < 0 ? `−${-against}%` : against > 0 ? `+${against}%` : "0%"}
+                      </dd>
+                      <dt>vs OpenRouter</dt>
+                    </div>
+                  )}
+                </dl>
+                <small>
+                  {sats ? "sats" : "USD"} per 1M tokens.{" "}
+                  {selected === best
+                    ? "It is the cheapest approved node right now."
+                    : !approved(selected.provider)
+                      ? "This node is not approved, so apps do not send requests to it."
+                      : best
+                        ? `Apps would send the request to ${best.provider.name}, the cheapest approved node.`
+                        : ""}
+                </small>
               </div>
+            )}
+            <h2>
+              Call it<small>{selected ? `at ${selected.provider.name}` : ""}</small>
+            </h2>
+            <div className="md-code">
+              <div className="md-code-top">
+                <div className="pg-switch" role="group" aria-label="Language">
+                  {(["curl", "python", "javascript"] as const).map((language) => (
+                    <button key={language} type="button" aria-pressed={activeTab === language} onClick={() => setActiveTab(language)}>
+                      {language === "curl" ? "cURL" : language === "python" ? "Python" : "JavaScript"}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => copy(code[activeTab], setCopied)}>
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <pre>{code[activeTab]}</pre>
             </div>
-
-            {/* Model Reviews */}
-            <div>
-              <ModelReviews
-                modelId={model.id}
-                providersForModel={providersWithPricing.map((p) => p.provider)}
+            <label className="md-token">
+              Your Cashu token or API key. It is put into the code above and kept only in this browser.
+              <input
+                type="text"
+                spellCheck={false}
+                autoComplete="off"
+                placeholder="cashuB... or sk-..."
+                value={tokenInput}
+                onChange={(event) => setTokenInput(event.target.value)}
+                onBlur={() => setLocalCashuToken(storageBaseUrl, tokenInput || "")}
               />
-            </div>
+            </label>
+
+          </aside>
+
+          <div className="md-reviews">
+            <ModelReviews modelId={model.id} providersForModel={sellers.map((entry) => entry.provider)} />
           </div>
         </div>
       </section>
-
-      <div className="max-w-[1800px] mx-auto w-full">
-        <Footer />
-      </div>
-    </main>
+    </SiteShell>
   );
 }

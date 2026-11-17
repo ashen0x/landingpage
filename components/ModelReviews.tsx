@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp as ArrowUpIcon, ChevronsUpDown as ChevronsUpDownIcon, Check as CheckIcon } from "lucide-react";
+import { ArrowUp as ArrowUpIcon } from "lucide-react";
 import { useNostr } from "@/context/NostrContext";
 import { type Event } from "nostr-tools";
 import { getDefaultRelays } from "@/lib/nostr";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +15,7 @@ import {
 import type { Provider } from "@/app/data/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import "@/components/model-reviews.css";
 
 interface ModelReviewsProps {
   modelId: string;
@@ -60,7 +58,6 @@ export function ModelReviews({ modelId, providersForModel }: ModelReviewsProps) 
   const [error, setError] = useState<string | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [nsecInput, setNsecInput] = useState("");
-  const [open, setOpen] = useState(false);
   const [isUpvotingById, setIsUpvotingById] = useState<Record<string, boolean>>({});
   const [userUpvoted, setUserUpvoted] = useState<Record<string, boolean>>({});
   const [upvoteCounts, setUpvoteCounts] = useState<Record<string, number>>({});
@@ -184,115 +181,91 @@ export function ModelReviews({ modelId, providersForModel }: ModelReviewsProps) 
   }, [items, upvoteCounts, sortMode]);
 
   return (
-    <div className="font-mono">
-      <h2 className="text-xl font-bold text-foreground mb-8">Model Reviews</h2>
+    <div>
+      <h2>
+        Reviews
+        <span className="pg-switch" role="group" aria-label="Order of the reviews">
+          <button type="button" aria-pressed={sortMode === "top"} onClick={() => setSortMode("top")}>
+            Top
+          </button>
+          <button type="button" aria-pressed={sortMode === "new"} onClick={() => setSortMode("new")}>
+            Newest
+          </button>
+        </span>
+      </h2>
 
-      <div className="mb-8 flex items-center gap-4">
-        <span className="text-xs text-muted-foreground">Provider:</span>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-2 border-border bg-muted text-xs text-foreground hover:bg-muted"
-            >
-              {providersForModel.find((p) => p.pubkey === selectedProviderId)?.name || "Select Provider"}
-              <ChevronsUpDownIcon className="h-3 w-3 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="bg-background border-border p-1 w-64">
+      <div className="rv-top">
+        <label>
+          Of this model at
+          <select value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}>
             {providersForModel.map((p) => (
-              <button
-                key={p.id}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => { setSelectedProviderId(p.pubkey); setOpen(false); }}
-              >
+              <option key={p.id} value={p.pubkey}>
                 {p.name}
-                {p.pubkey === selectedProviderId && <CheckIcon className="h-3 w-3" />}
-              </button>
+              </option>
             ))}
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {isAuthenticated ? (
-        <div className="mb-12 space-y-4">
-          <Textarea
-            value={reviewText}
-            onChange={(e) => setReviewText(e.target.value)}
-            placeholder="Share your experience..."
-            className="min-h-24 border-border bg-card text-muted-foreground placeholder:text-muted-foreground"
-            rows={3}
-          />
-          <div className="flex items-center justify-between">
-            <Button onClick={handleSubmit} disabled={isSubmitting || !reviewText.trim()} size="sm">
-              {isSubmitting ? "Publishing..." : "Publish Review"}
-            </Button>
-            <button onClick={logout} className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-4">Log out ({publicKey?.slice(0, 8)})</button>
-          </div>
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
-        </div>
-      ) : (
-        <Button onClick={() => setLoginOpen(true)} variant="outline" className="mb-12">Login with Nostr to Review</Button>
-      )}
-
-      <div className="flex flex-col">
-        <div className="mb-4 flex justify-end">
-          <Tabs
-            value={sortMode}
-            onValueChange={(value) => setSortMode(value as "top" | "new")}
-            className="w-auto"
-          >
-            <TabsList variant="line" className="h-8">
-              <TabsTrigger
-                value="top"
-                className="h-7 text-xs"
-              >
-                Top
-              </TabsTrigger>
-              <TabsTrigger
-                value="new"
-                className="h-7 text-xs"
-              >
-                Newest
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {isLoading ? (
-          <div className="py-12 border-t border-border/30 text-xs text-muted-foreground">Loading reviews...</div>
-        ) : items.length === 0 ? (
-          <div className="py-12 border-t border-border/30 text-xs text-muted-foreground">No reviews yet.</div>
-        ) : (
-          <div className="flex flex-col border-t border-border/30">
-            {sortedItems.map((r) => (
-              <div key={r.id} className="py-8 border-b border-border/30 flex gap-6">
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    disabled={Boolean(isUpvotingById[r.id])}
-                    onClick={() => handleUpvote(r.id, r.pubkey)}
-                    className={`p-1 hover:bg-muted transition-colors disabled:opacity-40 ${userUpvoted[r.id] ? "text-foreground" : "text-muted-foreground"}`}
-                  >
-                    <ArrowUpIcon className="h-4 w-4" />
-                  </button>
-                  <span className="text-[10px] font-bold text-muted-foreground">{upvoteCounts[r.id] || 0}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-baseline mb-2">
-                    <span className="text-[10px] text-muted-foreground">{formatTimeAgo(r.created_at)}</span>
-                  </div>
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{r.content}</p>
-                  <div className="mt-4 text-[10px] text-muted-foreground">npub: {r.pubkey.slice(0, 16)}...</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          </select>
+        </label>
+        {!isAuthenticated && (
+          <button type="button" className="rv-pill" onClick={() => setLoginOpen(true)}>
+            Log in with Nostr to write one
+          </button>
         )}
       </div>
 
+      {isAuthenticated && (
+        <div className="rv-write">
+          <textarea
+            value={reviewText}
+            onChange={(e) => setReviewText(e.target.value)}
+            placeholder="How did it go for you?"
+            aria-label="Your review"
+            rows={3}
+          />
+          <div>
+            <button type="button" className="rv-pill" onClick={handleSubmit} disabled={isSubmitting || !reviewText.trim()}>
+              {isSubmitting ? "Publishing" : "Publish review"}
+            </button>
+            <button type="button" className="rv-quiet" onClick={logout}>
+              Log out ({publicKey?.slice(0, 8)})
+            </button>
+          </div>
+          {error ? <p className="rv-error">{error}</p> : null}
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="rv-none">Looking for reviews.</p>
+      ) : items.length === 0 ? (
+        <p className="rv-none">No reviews yet.</p>
+      ) : (
+        <ul className="rv-list">
+          {sortedItems.map((r) => (
+            <li key={r.id}>
+              <span className="rv-vote">
+                <button
+                  type="button"
+                  aria-label="Upvote"
+                  aria-pressed={Boolean(userUpvoted[r.id])}
+                  disabled={Boolean(isUpvotingById[r.id])}
+                  onClick={() => handleUpvote(r.id, r.pubkey)}
+                >
+                  <ArrowUpIcon />
+                </button>
+                {upvoteCounts[r.id] || 0}
+              </span>
+              <div>
+                <p>{r.content}</p>
+                <small>
+                  {formatTimeAgo(r.created_at)} · {r.pubkey.slice(0, 16)}…
+                </small>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
-        <DialogContent className="bg-background border-border text-foreground font-mono">
+        <DialogContent className="bg-background border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Login with Nostr</DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs">Use an extension or paste your nsec to sign review events.</DialogDescription>
