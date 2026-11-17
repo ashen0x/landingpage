@@ -1,0 +1,464 @@
+/* The Stats page: three numbers that choose what the chart draws, a bar for each day
+   cut into its largest parts, and two lists that say on what and through which nodes. */
+
+.st-tools {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px 28px;
+}
+.st-only {
+  margin: 0;
+  color: var(--dim);
+  font-size: 14.5px;
+}
+.st-only b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.st-only button {
+  margin-left: 12px;
+  color: var(--dim);
+  box-shadow: 0 1px 0 var(--hair);
+  transition: color 200ms;
+}
+.st-only button:hover {
+  color: var(--ink);
+}
+
+/* which relays answered: a dot each, named when the pointer rests on it */
+.st-relays {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.st-relays i {
+  width: 12px;
+  height: 12px;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  background: var(--hair) padding-box;
+}
+.st-relays i[data-on] {
+  background: var(--dim) padding-box;
+}
+.st-relays span {
+  margin-left: 6px;
+}
+
+/* ── the three numbers ── */
+.st-nums {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 3vw, 48px);
+  margin-top: clamp(24px, 4vh, 44px);
+}
+.st-num {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding-top: 18px;
+  box-shadow: inset 0 1px 0 var(--hair);
+  text-align: left;
+  transition: box-shadow 300ms;
+}
+.st-num[aria-pressed="true"] {
+  box-shadow: inset 0 1.5px 0 var(--ink);
+}
+.st-num b {
+  color: var(--dim);
+  font-size: clamp(1.7rem, 4vw, 3.5rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  transition: color 200ms;
+}
+.st-num:hover b,
+.st-num[aria-pressed="true"] b {
+  color: var(--ink);
+}
+.st-num span {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.st-num[aria-pressed="true"] span {
+  color: var(--dim);
+}
+.st-num small {
+  color: var(--faint);
+  font-size: 13.5px;
+}
+
+/* ── the chart ── */
+.st-chart {
+  margin-top: clamp(32px, 6vh, 56px);
+}
+.st-cap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 24px;
+  min-height: 26px;
+  color: var(--dim);
+  font-size: 14.5px;
+}
+.st-cap p {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  min-width: 0;
+}
+.st-cap b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.st-quiet {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.st-chip {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.st-cap .st-key {
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  font-size: 13.5px;
+}
+.st-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.st-plot {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  height: clamp(200px, 30vh, 280px);
+  margin-top: 18px;
+  padding-left: 52px;
+}
+.st-line {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--hair);
+  pointer-events: none;
+}
+.st-line em {
+  position: absolute;
+  bottom: 5px;
+  left: 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-style: normal;
+}
+/* a day is the whole height of the plot to the pointer, so a short bar is as easy to reach */
+.st-slot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  border-radius: 4px;
+}
+.st-slot[data-over] {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+.st-bar {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1.5px;
+  width: min(54%, 20px);
+  min-width: 2px;
+}
+.st-bar i {
+  display: block;
+  min-height: 0;
+  border-radius: 1px;
+}
+.st-bar i:last-child {
+  border-radius: 2px 2px 1px 1px;
+}
+.st-tip {
+  position: absolute;
+  top: -6px;
+  left: calc(52px + (100% - 52px) * var(--at) + 22px);
+  z-index: 2;
+  width: min(290px, 78vw);
+  padding: 14px 16px 12px;
+  border-radius: 12px;
+  background: var(--background);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--foreground) 16%, transparent),
+    0 18px 40px rgb(0 0 0 / 0.5);
+  font-size: 13.5px;
+  pointer-events: none;
+}
+.st-tip[data-left] {
+  left: auto;
+  right: calc((100% - 52px) * (1 - var(--at)) + 22px);
+}
+.st-tip h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+.st-tip p {
+  margin: 2px 0 10px;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+.st-tip div {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto 2.4rem;
+  gap: 9px;
+  align-items: center;
+  min-height: 24px;
+  color: var(--dim);
+}
+.st-tip div span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.st-tip div b {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.st-tip div em {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-style: normal;
+  text-align: right;
+}
+.st-days {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-left: 52px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* ── the two lists ── */
+.st-two {
+  display: grid;
+  gap: clamp(40px, 6vh, 64px) clamp(32px, 5vw, 88px);
+  margin-top: clamp(48px, 8vh, 80px);
+}
+@media (min-width: 1200px) {
+  .st-two {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.st-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 40px;
+}
+.st-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.3rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.st-cols,
+.st-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12rem 12rem;
+  gap: 22px;
+  align-items: center;
+  width: 100%;
+}
+.st-cols {
+  height: 34px;
+  margin-top: 10px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.st-cols span[data-by] b {
+  color: var(--ink);
+}
+/* a heading stands on the columns of the cells under it: its name ends where the numbers end */
+.st-over {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.9rem;
+  gap: 8px;
+}
+.st-over b {
+  font-weight: 400;
+  text-align: right;
+}
+.st-over em {
+  font-style: normal;
+  text-align: right;
+}
+.st-row {
+  min-height: 50px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  color: var(--ink);
+  font-size: 15px;
+  text-align: left;
+  transition: background 200ms;
+  /* a row that joins the list rises into place, one after the other */
+  animation: st-in 460ms var(--out) both;
+  animation-delay: calc(var(--n, 0) * 28ms);
+}
+@keyframes st-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-row {
+    animation: none;
+  }
+}
+.st-row:hover,
+.st-row[data-on] {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+.st-name {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.st-name > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.st-share {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.6rem 2.9rem;
+  gap: 8px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.st-share u {
+  display: block;
+  overflow: hidden;
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+}
+.st-share u i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+.st-share[data-sats] u i {
+  background: var(--gold);
+}
+.st-share b {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: right;
+}
+.st-share em {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-style: normal;
+  text-align: right;
+}
+.st-foot {
+  margin: clamp(36px, 6vh, 56px) 0 0;
+  color: var(--faint);
+  font-size: 13.5px;
+}
+.st-how {
+  margin-top: 10px;
+  color: var(--faint);
+  font-size: 13.5px;
+}
+.st-how summary {
+  width: fit-content;
+  color: var(--dim);
+  cursor: pointer;
+}
+.st-how summary:hover {
+  color: var(--ink);
+}
+.st-how p {
+  max-width: 70ch;
+  margin: 8px 0 0;
+}
+
+/* a phone: the numbers lose their second line of help, a row keeps number and share and drops the bar */
+@media (max-width: 760px) {
+  .st-num small {
+    display: none;
+  }
+  .st-num span {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .st-plot,
+  .st-days {
+    padding-left: 34px;
+  }
+  .st-tip {
+    left: 34px;
+    right: auto;
+  }
+  .st-tip[data-left] {
+    right: 0;
+    left: auto;
+  }
+  .st-cols,
+  .st-row {
+    grid-template-columns: minmax(0, 1fr) 6.5rem 6.5rem;
+    gap: 10px;
+  }
+  .st-share,
+  .st-over {
+    grid-template-columns: minmax(0, 1fr) 2.5rem;
+    gap: 4px;
+  }
+  .st-share b {
+    font-size: 12.5px;
+  }
+  .st-over em {
+    visibility: hidden;
+  }
+  .st-cols {
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+  }
+  .st-share u {
+    display: none;
+  }
+}

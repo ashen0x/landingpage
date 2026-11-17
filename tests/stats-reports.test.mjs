@@ -339,23 +339,18 @@ test("legacy timestamps without a timezone are UTC, independent of the browser t
 });
 
 
-function averageCard(context) {
+/** The page's own expression for tokens a request, read from its source and run on these totals. */
+function tokensEach(totals) {
   const source = readFileSync(new URL("../app/stats/page.tsx", import.meta.url), "utf8");
   const file = ts.createSourceFile("page.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const declarations = [];
-  let display;
+  let expression;
   const visit = (node) => {
-    if (ts.isVariableDeclaration(node) && ["avgTokensPerRequest", "avgTokensEmptyLabel"].includes(node.name.getText(file))) {
-      declarations.push(`const ${node.name.getText(file)} = ${node.initializer.getText(file)};`);
-    }
-    if (ts.isJsxExpression(node) && node.expression?.getText(file).startsWith("avgTokensPerRequest === null")) display = node.expression.getText(file);
+    if (ts.isVariableDeclaration(node) && node.name.getText(file) === "tokensEach") expression = node.initializer.getText(file);
     ts.forEachChild(node, visit);
   };
   visit(file);
-  assert.ok(display, "evaluate the actual token average card expression");
-  return vm.runInNewContext(`${declarations.join("\n")}\n(${display})`, {
-    formatCompactNumber: String, ...context,
-  });
+  assert.ok(expression, "evaluate the page's own tokens a request expression");
+  return vm.runInNewContext(`(${expression})`, { totals });
 }
 
 test("cache read and creation tokens are included in total, named model and Other totals", async () => {
@@ -378,17 +373,16 @@ test("token totals aggregate across days and providers, and legacy days still co
   const selection = selectStats(buildProviders([first, second, older]), completedRange("7d", NOW));
   assert.equal(sum(selection), 16);
   assert.equal(sum(selection, "total_tokens"), 260);
-  assert.equal(averageCard({ requests: 16, tokens: 260 }), String(260 / 16));
+  assert.equal(tokensEach({ requests: 16, tokens: 260 }), 260 / 16);
   const yesterday = selectStats(buildProviders([first, second, older]), completedRange("1d", NOW));
   assert.equal(sum(yesterday), 15);
   assert.equal(sum(yesterday, "total_tokens"), 220);
 });
 
-test("token average reports reported tokens per completed request, and degrades without data", () => {
-  assert.equal(averageCard({ requests: 3, tokens: 60 }), String(20));
-  assert.equal(averageCard({ requests: 1, tokens: 0 }), String(0));
-  assert.equal(averageCard({ requests: 0, tokens: 0 }), "No requests");
-  assert.equal(averageCard({ requests: null, tokens: null }), "No data");
+test("token average reports reported tokens per completed request, and has no number without requests", () => {
+  assert.equal(tokensEach({ requests: 3, tokens: 60 }), 20);
+  assert.equal(tokensEach({ requests: 1, tokens: 0 }), 0);
+  assert.equal(tokensEach({ requests: 0, tokens: 0 }), null);
 });
 
 test("legacy-only history keeps totals and models while modern days take precedence without duplication", async () => {

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronsUpDown, CircleHelp } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { verifyEvent, type Event } from "nostr-tools";
 import { AbstractSimplePool } from "nostr-tools/abstract-pool";
 import {
-  ANALYTICS_KIND, DAY_MS, WINDOW_OPTIONS, buildProviders, completedRange,
+  ANALYTICS_KIND, DAY_MS, buildProviders, completedRange,
   dayKey, parseStatsEvent, reportWins, sanitizeStatsProviders, selectStats,
-  type StatsGrouping, type StatsProvider, type StatsReport, type WindowKey,
+  type StatsDay, type StatsGrouping, type StatsProvider, type StatsReport, type WindowKey,
 } from "@/lib/stats-reports";
 import {
   QueryClient,
@@ -15,48 +14,20 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { PageContainer, SiteShell } from "@/components/layout/site-shell";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  ModelShareChart,
-  ProviderComparisonChart,
-  type ModelSharePoint,
-  type ProviderComparisonPoint,
-} from "@/components/stats/stats-analytics-charts";
-import {
-  CHART_MODEL_LIMIT,
-  CHART_MODES,
-  MIN_CHART_MODEL_SHARE,
-  type ChartMode,
-} from "@/components/stats/stats-chart-domain";
-import {
-  TopModelsUsageChart,
-  readBucketTotal,
-  type ModelUsageMix,
-  type ModelUsageMixMetric,
-} from "@/components/stats/top-models-usage-chart";
-import { Button } from "@/components/ui/button";
+import { SiteShell } from "@/components/layout/site-shell";
+import { Mark } from "@/components/layout/Mark";
+import { pulse } from "@/components/layout/Band";
+import { companyIn } from "@/components/stats/model-company-icon";
 import { getDefaultRelays } from "@/lib/nostr";
-import { formatCompactCount, formatCompactNumber } from "@/lib/number-format";
-import { cn } from "@/lib/utils";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
+import { fetchListData } from "@/lib/api/price-sources";
+import { formatCompactCount } from "@/lib/number-format";
+import { nodeKey, usageKey } from "@/lib/usage-count";
+import { useNodeLists } from "@/lib/use-node-lists";
+import "@/components/layout/pages.css";
+import "./stats.css";
 
 type RelayState = "connecting" | "active" | "done" | "no-data" | "timeout" | "error";
 type ProviderTimeline = StatsProvider;
-type WindowPayload = { metrics: ModelUsageMixMetric[] };
 type RelayStatus = { url: string; state: RelayState };
 type StatsQueryData = {
   timelines: ProviderTimeline[];
@@ -82,13 +53,13 @@ const RELAYS = Array.from(
   ]),
 );
 
-const ALL_PROVIDERS_ID = "__all_providers__";
 const STATS_CACHE_KEY = "stats_snapshots_cache_v3";
 const LEGACY_STATS_CACHE_KEY = "stats_snapshots_cache_v2";
 const STATS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const STATS_QUERY_KEY = ["stats-snapshots"] as const;
 const STATS_REFETCH_MS = 15 * 60_000;
 const STATS_EMPTY_RETRY_MS = 60_000;
+
 
 function normalizeRelayUrl(url: string): string {
   try {
@@ -126,127 +97,6 @@ function createInitialRelayStatuses(): Record<string, RelayStatus> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function asNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-}
-
-function getMetricModelValues(
-  metric: ModelUsageMixMetric,
-  mode: ChartMode,
-): Record<string, number> {
-  if (mode === "requests") return metric.model_counts ?? {};
-  if (mode === "tokens") return metric.model_tokens ?? {};
-  const raw = metric.model_revenue_msats ?? {};
-  return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, asNumber(value) / 1000]));
-}
-
-function getPayloadRequests(payload: WindowPayload | null): number {
-  if (!payload) return 0;
-  return payload.metrics.reduce(
-    (sum, metric) => sum + readBucketTotal(metric, "requests"),
-    0,
-  );
-}
-
-function getPayloadTokens(payload: WindowPayload | null): number {
-  if (!payload) return 0;
-  return payload.metrics.reduce(
-    (sum, metric) => sum + readBucketTotal(metric, "tokens"),
-    0,
-  );
-}
-
-function getPayloadRevenueSats(payload: WindowPayload | null): number {
-  if (!payload) return 0;
-  return (
-    payload.metrics.reduce(
-      (sum, metric) => sum + readBucketTotal(metric, "revenue"),
-      0,
-    ) / 1000
-  );
-}
-
-function countActiveModels(
-  metrics: ModelUsageMixMetric[],
-): number {
-  const models = new Set<string>();
-  for (const metric of metrics) {
-    for (const [model, value] of Object.entries(
-      metric.model_counts,
-    )) {
-      if (!model || model === "unknown" || asNumber(value) <= 0) continue;
-      models.add(model);
-    }
-  }
-  return models.size;
-}
-
-function buildModelShare(
-  metrics: ModelUsageMixMetric[],
-  mode: ChartMode,
-): ModelSharePoint[] {
-  const totals = new Map<string, number>();
-  let othersTotal = 0;
-
-  for (const metric of metrics) {
-    let namedTotal = 0;
-    for (const [model, value] of Object.entries(
-      getMetricModelValues(metric, mode),
-    )) {
-      if (!model || model === "unknown") continue;
-      const parsed = asNumber(value);
-      if (!Number.isFinite(parsed) || parsed <= 0) continue;
-      totals.set(model, (totals.get(model) ?? 0) + parsed);
-      namedTotal += parsed;
-    }
-    const bucketTotal =
-      readBucketTotal(metric, mode) / (mode === "revenue" ? 1000 : 1);
-    othersTotal += Math.max(0, bucketTotal - namedTotal);
-  }
-
-  const ranked = Array.from(totals.entries())
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
-  const total = ranked.reduce((sum, row) => sum + row.value, 0) + othersTotal;
-
-  if (total <= 0) return [];
-
-  // Same cohort rule as the timeline, so a model is never named here while the
-  // chart folds it into Other.
-  const topRows = ranked
-    .filter((row) => row.value / total >= MIN_CHART_MODEL_SHARE)
-    .slice(0, CHART_MODEL_LIMIT);
-  const named = new Set(topRows.map((row) => row.label));
-  const remainingTotal =
-    othersTotal +
-    ranked
-      .filter((row) => !named.has(row.label))
-      .reduce((sum, row) => sum + row.value, 0);
-
-  const rows: ModelSharePoint[] = topRows.map((row) => ({
-    kind: "model",
-    label: row.label,
-    value: row.value,
-    share: row.value / total,
-  }));
-
-  if (remainingTotal > 0) {
-    rows.push({
-      kind: "other",
-      label: "Other models",
-      value: remainingTotal,
-      share: remainingTotal / total,
-    });
-  }
-
-  return rows;
 }
 
 function formatUpdatedAt(unixSeconds: number): string {
@@ -482,64 +332,110 @@ async function fetchStatsSnapshotsWithFallback(
   }
 }
 
+type Mode = "requests" | "sats" | "tokens";
+type Split = "models" | "makers" | "open";
+const KINDS = { open: "Open models", closed: "Closed models", unknown: "Not known" } as const;
+/** One row of a list: what it adds up to, and its value in each bar of the chart. */
+type Row = { requests: number; sats: number; tokens: number; bars: number[][] };
+
+const WINDOWS: { id: WindowKey; label: string; said: string }[] = [
+  { id: "7d", label: "7 days", said: "7 days" },
+  { id: "30d", label: "30 days", said: "30 days" },
+  { id: "90d", label: "90 days", said: "90 days" },
+  { id: "365d", label: "1 year", said: "year" },
+];
+const MODES: { id: Mode; label: string; unit: string }[] = [
+  { id: "requests", label: "Requests", unit: "requests" },
+  { id: "sats", label: "Sats paid", unit: "sats" },
+  { id: "tokens", label: "Tokens", unit: "tokens" },
+];
+const AT: Record<Mode, number> = { requests: 0, sats: 1, tokens: 2 };
+/* The four largest parts of the chart each keep a colour of their own; the rest is one grey.
+   These four stay apart for colour-blind readers too, and none is gold, which means sats here. */
+const COLOURS = ["#3987e5", "#199e70", "#9085e9", "#d55181"];
+const REST = "color-mix(in srgb, var(--foreground) 22%, transparent)";
+const DIM = "color-mix(in srgb, var(--foreground) 13%, transparent)";
+const PARTS = 4;
+const FIRST_ROWS = 7;
+const MORE_ROWS = 10;
+
+const empty = (bars: number): Row => ({ requests: 0, sats: 0, tokens: 0, bars: Array.from({ length: bars }, () => [0, 0, 0]) });
+const count = (value: number) => (value > 0 ? formatCompactCount(value) : "—");
+const percent = (part: number) => (!(part > 0) ? "—" : part < 0.005 ? "<1%" : `${Math.round(part * 100)}%`);
+const each = (value: number) => (value >= 10 ? Math.round(value).toString() : value >= 0.1 ? value.toFixed(1) : value > 0 ? "<0.1" : "0");
+
+/**
+ * One name for a model on this page, however a node spells it. The reports name the same model
+ * with a dash for the dot ("claude-opus-5-5") and with the date of a pinned release at the end
+ * ("-20260921", "-1017"); here, where only use is counted, those are one row. Names that mean
+ * another product ("-flash", "tinfoil-") are left alone.
+ */
+const family = (model: string) =>
+  model
+    .replace(/-20\d{2}-?(0[1-9]|1[0-2])-?(0[1-9]|[12]\d|3[01])$/, "")
+    .replace(/-(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/, "")
+    .replace(/(\d)-(\d)(?![\da-z.])/g, "$1.$2");
+
+/** What the bars add up to, and the same split by model or by maker. */
+function tally(metrics: StatsDay[], split: Split, open?: Map<string, boolean>) {
+  const rows = new Map<string, Row>();
+  // whose mark stands before a row: found from the model's name, and kept for the maker's row too
+  const marks = new Map<string, ReturnType<typeof companyIn>>();
+  const totals = empty(metrics.length);
+  metrics.forEach((bar, index) => {
+    const whole = [bar.total_successful, bar.total_revenue_msats / 1000, bar.total_tokens];
+    totals.requests += whole[0];
+    totals.sats += whole[1];
+    totals.tokens += whole[2];
+    totals.bars[index] = whole;
+    const names = Array.from(new Set([...Object.keys(bar.model_counts ?? {}), ...Object.keys(bar.model_revenue_msats ?? {}), ...Object.keys(bar.model_tokens ?? {})]));
+    for (const name of names) {
+      const model = family(usageKey(name));
+      if (!model || model === "unknown") continue;
+      const known = open?.get(model);
+      const company = companyIn(model);
+      const key = split === "models" ? model
+        : split === "makers" ? (company?.name ?? "Other makers")
+        : known === undefined ? KINDS.unknown : known ? KINDS.open : KINDS.closed;
+      const row = rows.get(key) ?? empty(metrics.length);
+      const values = [bar.model_counts?.[name] ?? 0, (bar.model_revenue_msats?.[name] ?? 0) / 1000, bar.model_tokens?.[name] ?? 0];
+      row.requests += values[0];
+      row.sats += values[1];
+      row.tokens += values[2];
+      values.forEach((value, at) => (row.bars[index][at] += value));
+      rows.set(key, row);
+      if (split !== "open") marks.set(key, company);
+    }
+  });
+  return { rows, totals, marks };
+}
+
 function StatsPageContent() {
   const [selectedWindow, setSelectedWindow] = useState<WindowKey>("30d");
-  const [grouping, setGrouping] = useState<StatsGrouping>("daily");
-  const [selectedMode, setSelectedMode] = useState<ChartMode>("revenue");
-  const [selectedProviderId, setSelectedProviderId] =
-    useState<string>(ALL_PROVIDERS_ID);
-  const selectedWindowLabel =
-    WINDOW_OPTIONS.find((option) => option.id === selectedWindow)?.label ??
-    selectedWindow;
-  const [providerDropdownOpen, setProviderDropdownOpen] = useState(false);
-  const [relayDetailOpen, setRelayDetailOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>("sats");
+  const [split, setSplit] = useState<Split>("models");
+  const [lit, setLit] = useState<string | null>(null);
+  const [nodeId, setNodeId] = useState<string | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  const [shownParts, setShownParts] = useState(FIRST_ROWS);
+  const [shownNodes, setShownNodes] = useState(FIRST_ROWS);
   const queryClient = useQueryClient();
   const emptyTimelines = useMemo<ProviderTimeline[]>(() => [], []);
-  const {
-    data,
-    error: queryError,
-    isPending,
-  } = useQuery({
+  const { data, error: queryError, isPending } = useQuery({
     queryKey: STATS_QUERY_KEY,
     // A refresh keeps the last checked result on screen, not unchecked progress.
     queryFn: ({ signal }) => fetchStatsSnapshotsWithFallback(signal, queryClient.getQueryData(STATS_QUERY_KEY)
       ? undefined : (progress) => { queryClient.setQueryData(STATS_QUERY_KEY, progress); }),
     placeholderData: (previousData) => previousData,
     gcTime: STATS_CACHE_TTL_MS,
-    refetchInterval: (query) =>
-      (query.state.data?.timelines?.length ?? 0) > 0
-        ? STATS_REFETCH_MS
-        : STATS_EMPTY_RETRY_MS,
+    refetchInterval: (query) => ((query.state.data?.timelines?.length ?? 0) > 0 ? STATS_REFETCH_MS : STATS_EMPTY_RETRY_MS),
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
   const timelines = data?.timelines ?? emptyTimelines;
-  const relaySummary = useMemo(() => {
-    const list = Object.values(data?.relayStatuses ?? {});
-    if (list.length === 0) return null;
-    const relays = list.map((relay) => ({
-      url: relay.url,
-      host: relay.url.replace(/^wss:\/\//, "").replace(/\/$/, ""),
-      ...RELAY_STATE_META[relay.state],
-    }));
-    return {
-      answered: relays.filter((relay) => relay.answered).length,
-      total: relays.length,
-      relays,
-    };
-  }, [data?.relayStatuses]);
   const loading = isPending && !data;
-  const hasUsableTimelines = timelines.length > 0;
-  const error = !hasUsableTimelines
-    ? (data?.emptyMessage ??
-      (loading
-        ? null
-        : queryError instanceof Error
-          ? queryError.message
-          : queryError
-            ? "Unable to load analytics snapshots."
-            : null))
-    : null;
+  const error = timelines.length > 0 ? null
+    : (data?.emptyMessage ?? (loading ? null : queryError instanceof Error ? queryError.message : queryError ? "Unable to load analytics snapshots." : null));
 
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => {
@@ -548,708 +444,313 @@ function StatsPageContent() {
     return () => window.clearInterval(timer);
   }, []);
   const range = useMemo(() => completedRange(selectedWindow, today ? Date.parse(`${today}T00:00:00Z`) : 0), [selectedWindow, today]);
+  const grouping: StatsGrouping = selectedWindow === "365d" ? "weekly" : "daily";
   // Reports are signed but self-reported. Drop staging hosts, known test signers
   // and provider-days whose revenue is orders of magnitude off the window
   // median before anything is counted, so totals and shares agree.
-  const { providers: visibleTimelines, sanity } = useMemo(
-    () => sanitizeStatsProviders(timelines, range),
-    [timelines, range],
-  );
+  const { providers: visible, sanity } = useMemo(() => sanitizeStatsProviders(timelines, range), [timelines, range]);
 
-  useEffect(() => {
-    if (visibleTimelines.length === 0) {
-      setSelectedProviderId(ALL_PROVIDERS_ID);
-      return;
+  // a node is named as the rest of the site names it: by its address, or else by its key
+  const { nodes: listed } = useNodeLists();
+  const nameOf = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const { provider } of listed) {
+      if (!provider.name) continue;
+      names.set(nodeKey(provider.endpoint_url), provider.name);
+      if (provider.pubkey) names.set(provider.pubkey, provider.name);
     }
-    if (selectedProviderId === ALL_PROVIDERS_ID) {
-      return;
-    }
-    const exists = visibleTimelines.some(
-      (timeline) => timeline.providerId === selectedProviderId,
-    );
-    if (!exists) {
-      setSelectedProviderId(ALL_PROVIDERS_ID);
-    }
-  }, [selectedProviderId, visibleTimelines]);
-
-  const providerOptions = useMemo(
-    () => [
-      { providerId: ALL_PROVIDERS_ID, providerLabel: "All providers" },
-      ...visibleTimelines,
-    ],
-    [visibleTimelines],
-  );
-
-  const selectedProviderOption =
-    providerOptions.find(
-      (option) => option.providerId === selectedProviderId,
-    ) ?? providerOptions[0];
-
-  const selectedTimeline = useMemo(() => {
-    if (selectedProviderId === ALL_PROVIDERS_ID) return null;
-    return (
-      visibleTimelines.find(
-        (timeline) => timeline.providerId === selectedProviderId,
-      ) ?? null
-    );
-  }, [selectedProviderId, visibleTimelines]);
-  const selection = useMemo(() => selectStats(
-    selectedProviderId === ALL_PROVIDERS_ID ? visibleTimelines : selectedTimeline ? [selectedTimeline] : [], range, grouping,
-  ), [range, grouping, selectedProviderId, selectedTimeline, visibleTimelines]);
-  const selectedWindowPayload: WindowPayload | null = selection.hasData ? { metrics: selection.metrics } : null;
-  const modelUsageMix: ModelUsageMix | null = selection.hasData ? {
-    top_models: [], metrics: selection.metrics, interval_minutes: grouping === "weekly" ? 10080 : 1440,
-    hours_back: range.days * 24, total_buckets: selection.metrics.length,
-  } : null;
-
-  const hasLegacy = selection.metrics.some((day) => day.legacy);
-  const requests = selectedWindowPayload ? getPayloadRequests(selectedWindowPayload) : null;
-  const tokens = selectedWindowPayload ? getPayloadTokens(selectedWindowPayload) : null;
-  const revenueSats = selectedWindowPayload
-    ? getPayloadRevenueSats(selectedWindowPayload)
-    : null;
-  const modelShare = useMemo<ModelSharePoint[]>(
-    () => buildModelShare(selection.metrics, selectedMode),
-    [selectedMode, selection.metrics],
-  );
-  const providerComparison = useMemo<ProviderComparisonPoint[]>(() => {
-    const rows = visibleTimelines
-      .map((timeline) => {
-        const providerSelection = selectStats([timeline], range, grouping);
-        const payload: WindowPayload | null = providerSelection.hasData ? { metrics: providerSelection.metrics } : null;
-        if (!payload) return null;
-
-        const requestsValue = getPayloadRequests(payload);
-        const tokensValue = getPayloadTokens(payload);
-        const revenueSatsValue = getPayloadRevenueSats(payload);
-        const value =
-          selectedMode === "requests"
-            ? requestsValue
-            : selectedMode === "tokens"
-              ? tokensValue
-              : revenueSatsValue;
-        if (value <= 0) return null;
-
-        return {
-          providerId: timeline.providerId,
-          providerLabel: timeline.providerLabel,
-          value,
-          share: 0,
-          activeModels: countActiveModels(payload.metrics),
-          requests: requestsValue,
-          revenueSats: revenueSatsValue,
-          tokens: tokensValue,
-        } satisfies ProviderComparisonPoint;
-      })
-      .filter((row): row is ProviderComparisonPoint => row !== null)
-      .sort((a, b) => b.value - a.value);
-
-    const totalValue = rows.reduce((sum, row) => sum + row.value, 0);
-    if (totalValue <= 0) return rows;
-    return rows.map((row) => ({
-      ...row,
-      share: row.value / totalValue,
+    return new Map(visible.map((provider) => {
+      const known = [...provider.reports.flatMap((report) => report.endpoints.map(nodeKey)), ...provider.providerId.split(":")]
+        .map((key) => names.get(key)).find(Boolean);
+      return [provider.providerId, known ?? provider.providerLabel];
     }));
-  }, [selectedMode, range, grouping, visibleTimelines]);
-  const showProviderComparison =
-    selectedProviderId === ALL_PROVIDERS_ID && providerComparison.length > 0;
-  const activeModelCount = selectedWindowPayload?.metrics.length
-    ? countActiveModels(selectedWindowPayload.metrics)
-    : 0;
-  // Reports no longer carry a measured sample, so the card divides every reported
-  // token by every completed request; the popover says what that divisor includes.
-  const avgTokensPerRequest = !!requests && tokens !== null ? (tokens ?? 0) / (requests ?? 1) : null;
-  const avgTokensEmptyLabel = requests === null ? "No data" : requests === 0 ? "No requests" : "Not reported";
-  const avgRevenuePerRequest =
-    requests !== null && revenueSats !== null && requests > 0
-      ? revenueSats / requests
-      : null;
-  const leadingShare =
-    selectedProviderId === ALL_PROVIDERS_ID
-      ? (providerComparison[0]?.share ?? null)
-      : (modelShare[0]?.share ?? null);
-  const leadingShareLabel =
-    selectedProviderId === ALL_PROVIDERS_ID
-      ? "Top provider share"
-      : "Top model share";
-  const rangeLabel = `${dayKey(range.start)} to ${dayKey(range.end - DAY_MS)} UTC`;
-  const hasPartialCoverage = selection.reportedProviderDays < selection.expectedProviderDays || selection.completeProviderDays < selection.reportedProviderDays;
-  const hasPartialData = hasPartialCoverage || data?.historyIncomplete || hasLegacy;
+  }, [listed, visible]);
 
+  const node = nodeId ? (visible.find((provider) => provider.providerId === nodeId) ?? null) : null;
+  const all = useMemo(() => selectStats(visible, range, grouping), [visible, range, grouping]);
+  const mine = useMemo(() => (node ? selectStats([node], range, grouping) : null), [node, range, grouping]);
+  const selection = mine ?? all;
+  /* Whether a model's weights are public comes from OpenRouter's list, under the names this page
+     gives models. A model the list does not know is not guessed at. */
+  const [open, setOpen] = useState<Map<string, boolean>>(() => new Map());
+  useEffect(() => {
+    let alive = true;
+    void fetchListData().then((list) => {
+      if (!alive) return;
+      const byName = new Map<string, boolean>();
+      list.open.forEach((isOpen, id) => {
+        const name = family(usageKey(id));
+        byName.set(name, (byName.get(name) ?? false) || isOpen);
+      });
+      setOpen(byName);
+    });
+    return () => { alive = false; };
+  }, []);
+  const { rows, totals, marks } = useMemo(() => tally(selection.metrics, split, open), [selection.metrics, split, open]);
+  const at = AT[mode];
+  const value = (row: Row) => (mode === "requests" ? row.requests : mode === "sats" ? row.sats : row.tokens);
+  const ranked = useMemo(
+    () => Array.from(rows.entries()).sort((a, b) => (mode === "requests" ? b[1].requests - a[1].requests : mode === "sats" ? b[1].sats - a[1].sats : b[1].tokens - a[1].tokens)),
+    [rows, mode],
+  );
+  const partsKey = ranked.filter(([name]) => name !== "Other makers").slice(0, PARTS).map(([name]) => name).join("\n");
+  const parts = useMemo(() => (partsKey ? partsKey.split("\n") : []), [partsKey]);
+
+  /* A part keeps its colour while it stays among the largest, whatever the chart is drawing:
+     colour follows the model, not its place in the list. */
+  const [held, setHeld] = useState<Record<string, number>>({});
+  const slots = useMemo(() => {
+    const next: Record<string, number> = {};
+    for (const name of parts) if (held[name] !== undefined && !Object.values(next).includes(held[name])) next[name] = held[name];
+    for (const name of parts) {
+      if (next[name] !== undefined) continue;
+      next[name] = COLOURS.findIndex((_, index) => !Object.values(next).includes(index));
+    }
+    return next;
+  }, [parts, held]);
+  useEffect(() => {
+    if (JSON.stringify(slots) !== JSON.stringify(held)) setHeld(slots);
+  }, [slots, held]);
+  const colour = (name: string) => (slots[name] !== undefined ? COLOURS[slots[name]] : REST);
+
+  const nodeRows = useMemo(() => visible
+    .map((provider) => {
+      const own = selectStats([provider], range, grouping);
+      if (!own.hasData) return null;
+      const sum = tally(own.metrics, "makers").totals;
+      return { id: provider.providerId, requests: sum.requests, sats: sum.sats, tokens: sum.tokens };
+    })
+    .filter((row): row is { id: string; requests: number; sats: number; tokens: number } => row !== null && (row.requests > 0 || row.sats > 0)),
+  [visible, range, grouping]);
+  const network = useMemo(() => tally(all.metrics, "makers").totals, [all.metrics]);
+  const nodesRanked = [...nodeRows].sort((a, b) => (mode === "requests" ? b.requests - a.requests : mode === "sats" ? b.sats - a.sats : b.tokens - a.tokens));
+
+  // what is picked must still be there after the period or the split changes
+  const litRow = lit ? (rows.get(lit) ?? null) : null;
+  const pick = (name: string) => { setLit((now) => (now === name ? null : name)); pulse(); };
+  const pickNode = (id: string | null) => { setNodeId((now) => (now === id ? null : id)); setLit(null); pulse(); };
+
+  // the chart: a bar for each day (each week over a year), cut into its parts
+  const heights = totals.bars.map((bar) => bar[at]);
+  const max = Math.max(0, ...heights);
+  const pow = max > 0 ? 10 ** Math.floor(Math.log10(max)) : 1;
+  const step = [0.25, 0.5, 1, 2, 2.5, 5].map((m) => m * pow).find((size) => max / size <= 4) ?? pow;
+  const lines: number[] = [];
+  for (let line = step; line < max * 0.98; line += step) lines.push(line);
+  const top = Math.max((lines.at(-1) ?? 0) + step * 0.35, max * 1.05, 1);
+  const cut = (index: number) => {
+    const whole = heights[index];
+    if (litRow && lit) {
+      const part = Math.min(whole, litRow.bars[index][at]);
+      return [{ name: lit, value: part, fill: slots[lit] !== undefined ? colour(lit) : mode === "sats" ? "var(--gold)" : "var(--ink)" }, { name: "Everything else", value: whole - part, fill: DIM }];
+    }
+    const list = parts.map((name) => ({ name, value: rows.get(name)?.bars[index][at] ?? 0, fill: colour(name) }));
+    if (split !== "open") list.push({ name: split === "models" ? "All other models" : "All other makers", value: Math.max(0, whole - list.reduce((sum, part) => sum + part.value, 0)), fill: REST });
+    return list;
+  };
+  const date = (index: number) => {
+    const bar = selection.metrics[index];
+    const from = new Date(bar.timestamp).toLocaleDateString("en", { month: "short", day: "numeric", timeZone: "UTC" });
+    if (grouping !== "weekly" || !bar.period_end) return from;
+    return `${from} to ${new Date(Date.parse(bar.period_end) - DAY_MS).toLocaleDateString("en", { month: "short", day: "numeric", timeZone: "UTC" })}`;
+  };
+  const ticks = selection.metrics.length > 1 ? [0, Math.round((selection.metrics.length - 1) / 3), Math.round(((selection.metrics.length - 1) * 2) / 3), selection.metrics.length - 1] : [0];
+  const unit = MODES.find((option) => option.id === mode)!.unit;
+  const said = WINDOWS.find((option) => option.id === selectedWindow)!.said;
+  const nodeName = node ? nameOf.get(node.providerId) : null;
+  const hasPartialCoverage = selection.reportedProviderDays < selection.expectedProviderDays || selection.completeProviderDays < selection.reportedProviderDays;
+  const relays = Object.values(data?.relayStatuses ?? {});
+
+  const share = (row: { requests: number; sats: number }, of: { requests: number; sats: number }) => (
+    <>
+      <span className="st-share" data-by={mode === "requests" || undefined}>
+        <u><i style={{ width: `${of.requests > 0 ? (row.requests / of.requests) * 100 : 0}%` }} /></u>
+        <b>{count(row.requests)}</b>
+        <em>{percent(row.requests / of.requests)}</em>
+      </span>
+      <span className="st-share" data-sats data-by={mode === "sats" || undefined}>
+        <u><i style={{ width: `${of.sats > 0 ? (row.sats / of.sats) * 100 : 0}%` }} /></u>
+        <b>{count(row.sats)}</b>
+        <em>{percent(row.sats / of.sats)}</em>
+      </span>
+    </>
+  );
+  // Every reported token over every completed request; a request whose provider sent no usage adds nothing.
+  const tokensEach = totals.requests > 0 ? totals.tokens / totals.requests : null;
+  const leftRows = ranked.slice(0, shownParts);
+  const rightRows = nodesRanked.slice(0, shownNodes);
+  const answered = relays.filter((relay) => RELAY_STATE_META[relay.state].answered).length;
 
   return (
     <SiteShell>
-      <section className="w-full relative">
-        <PageContainer className="py-12 md:py-20">
-          <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-            <div className="text-left">
-              <h1 className="mb-4 text-2xl font-medium tracking-tight text-foreground md:text-3xl">
-                Network Stats
-              </h1>
-              <p className="max-w-2xl text-base font-light leading-relaxed text-muted-foreground md:text-lg">
-                Shared usage analytics published by Routstr nodes.
-              </p>
-            </div>
+      <section className="pg st">
+        <p className="pg-label">Stats</p>
+        <h1 className="pg-title">
+          <span><i>What runs</i></span>
+          <span><i style={{ "--i": 1 } as CSSProperties}>through it.</i></span>
+        </h1>
+        <p className="pg-lede">
+          {all.hasData ? <><b>{all.reportingProviders}</b> nodes published what they served in the last {said}, each signed with its own key. This is their count, added up.</>
+            : "Nodes can publish what they served, each signed with its own key. This is their count, added up."}
+        </p>
+        <div className="pg-tools st-tools">
+          <div className="pg-switch" role="group" aria-label="Period">
+            {WINDOWS.map((option) => (
+              <button key={option.id} type="button" aria-pressed={selectedWindow === option.id} onClick={() => { setSelectedWindow(option.id); setOver(null); }}>{option.label}</button>
+            ))}
           </div>
+          {nodeName ? (
+            <p className="st-only">Showing only <b>{nodeName}</b><button type="button" onClick={() => pickNode(null)}>Show all nodes</button></p>
+          ) : null}
+          {relays.length > 0 ? (
+            <p className="st-relays" role="img" aria-label={`${answered} of ${relays.length} relays answered`}>
+              {relays.map((relay) => (
+                <i key={relay.url} data-on={RELAY_STATE_META[relay.state].answered || undefined} title={`${relay.url.replace(/^wss:\/\//, "").replace(/\/$/, "")}: ${RELAY_STATE_META[relay.state].label}`} />
+              ))}
+              <span>{answered} of {relays.length} relays</span>
+            </p>
+          ) : null}
+        </div>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
-            <div className="border-t border-border pt-3">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                  Providers
-                </p>
-                <div className="relative">
-                  <button
-                    type="button"
-                    aria-label="Which providers are counted?"
-                    className="peer text-muted-foreground/80 transition-colors hover:text-foreground"
-                  >
-                    <CircleHelp className="h-3.5 w-3.5" />
-                  </button>
-                  <div
-                    id="active-providers-tooltip"
-                    role="tooltip"
-                    className="pointer-events-none invisible absolute left-0 top-full z-20 mt-2 w-56 border border-border bg-card/95 p-3 opacity-0 shadow-md transition-all duration-150 peer-hover:visible peer-hover:opacity-100"
-                  >
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      Providers with data in this selected period. This does
-                      not indicate current availability, and sharing is
-                      optional.
+        {loading ? (
+          <p className="pg-none">Reading the reports from the relays…</p>
+        ) : error ? (
+          <p className="pg-none">{error}</p>
+        ) : !selection.hasData ? (
+          <p className="pg-none">No report covers this period. A missing report does not mean nothing was served.</p>
+        ) : (
+          <>
+            <div className="st-nums" role="group" aria-label="What the chart draws">
+              <button type="button" className="st-num" aria-pressed={mode === "requests"} onClick={() => setMode("requests")}>
+                <b>{count(totals.requests)}</b><span>Requests</span>
+                <small>{count(totals.requests / range.days)} a day</small>
+              </button>
+              <button type="button" className="st-num" aria-pressed={mode === "sats"} onClick={() => setMode("sats")}>
+                <b>{count(totals.sats)}</b><span>Sats paid to {node ? "this node" : "nodes"}</span>
+                <small>{totals.requests > 0 ? `${each(totals.sats / totals.requests)} sats a request` : " "}</small>
+              </button>
+              <button type="button" className="st-num" aria-pressed={mode === "tokens"} onClick={() => setMode("tokens")}>
+                <b>{count(totals.tokens)}</b><span>Tokens</span>
+                <small>{tokensEach === null ? " " : `${count(tokensEach)} a request`}</small>
+              </button>
+            </div>
+
+            <div className="st-chart">
+              <div className="st-cap">
+                {litRow && lit ? (
+                  <>
+                    <p><u className="st-chip" style={{ background: cut(0)[0].fill }} /><b>{lit}</b> · {count(value(litRow))} {unit} · {percent(value(litRow) / value(totals))} of all</p>
+                    <p className="st-quiet">{litRow.requests > 0 ? `${each(litRow.sats / litRow.requests)} sats a request` : ""}</p>
+                  </>
+                ) : (
+                  <>
+                    <p><b>{MODES.find((option) => option.id === mode)!.label} a {grouping === "weekly" ? "week" : "day"}</b></p>
+                    <p className="st-key">
+                      {cut(0).map((part) => <span key={part.name}><u className="st-chip" style={{ background: part.fill }} />{part.name}</span>)}
                     </p>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-12" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {formatCompactCount(selection.reportingProviders)}
-                </p>
-              )}
-            </div>
-            <div className="border-t border-border pt-3">
-              <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                {selectedWindowLabel} Completed requests
-              </p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-20" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {requests === null ? "Unavailable" : formatCompactCount(requests)}
-                </p>
-              )}
-            </div>
-            <div className="border-t border-border pt-3">
-              <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                {selectedWindowLabel} Tokens
-              </p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-20" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {tokens === null ? "Unavailable" : formatCompactCount(tokens)}
-                </p>
-              )}
-            </div>
-            <div className="border-t border-border pt-3">
-              <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                {selectedWindowLabel} Revenue (sats)
-              </p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-24" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {revenueSats === null ? "Unavailable" : formatCompactNumber(revenueSats, { standardMaximumFractionDigits: 3 })}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
-            <div className="border-t border-border pt-3">
-              <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                Named models
-              </p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-16" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {selection.hasData ? formatCompactCount(activeModelCount) : "Unavailable"}
-                </p>
-              )}
-            </div>
-            <div className="border-t border-border pt-3">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                  Avg tokens / request
-                </p>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button type="button" aria-label="How is the token average calculated?" className="text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                      <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] space-y-2 text-xs text-muted-foreground">
-                    <p>Reported tokens divided by completed requests. Counts include only what upstream providers reported, so a request whose provider sent no usage adds nothing to the total, while image and unsettled requests still count in the divisor.</p>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-20" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {avgTokensPerRequest === null
-                    ? avgTokensEmptyLabel
-                    : formatCompactNumber(avgTokensPerRequest, {
-                        standardMaximumFractionDigits: 0,
-                        compactMaximumFractionDigits: 1,
-                      })}
-                </p>
-              )}
-            </div>
-            <div className="border-t border-border pt-3">
-              <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                Avg sats / completion
-              </p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-12" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {avgRevenuePerRequest === null
-                    ? "Unavailable"
-                    : avgRevenuePerRequest > 0 && avgRevenuePerRequest < 0.001
-                      ? "<0.001"
-                    : formatCompactNumber(avgRevenuePerRequest, {
-                        standardMaximumFractionDigits: 3,
-                        compactMaximumFractionDigits: 1,
-                      })}
-                </p>
-              )}
-            </div>
-            <div className="border-t border-border pt-3">
-              <p className="text-[10px] tracking-[0.04em] text-muted-foreground">
-                {leadingShareLabel}
-              </p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-16" />
-              ) : (
-                <p className="mt-1 text-2xl text-foreground sm:text-3xl">
-                  {leadingShare === null
-                    ? "Unavailable"
-                    : `${(leadingShare * 100).toFixed(1)}%`}
-                </p>
-              )}
-            </div>
-          </div>
-        </PageContainer>
-      </section>
-
-      <section className="relative w-full flex-grow">
-        <PageContainer className="py-14">
-          <div className="mb-10 flex flex-col gap-8">
-            <div className="grid gap-6 md:grid-cols-[1fr_1fr_1fr_auto] md:items-start">
-              <div className="min-w-0">
-                <p className="mb-3 text-[10px] tracking-[0.04em] text-muted-foreground">
-                  Provider
-                </p>
-                <Popover
-                  open={providerDropdownOpen}
-                  onOpenChange={setProviderDropdownOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="stats-provider-select"
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={providerDropdownOpen}
-                      className="h-10 w-full justify-between border-border bg-card px-3 text-left text-sm font-normal text-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <span className="min-w-0 truncate">
-                        {selectedProviderOption.providerLabel}
-                      </span>
-                      {selectedProviderOption.providerId !== ALL_PROVIDERS_ID &&
-                      selectedProviderOption.providerLabel !==
-                        (selectedProviderOption.providerId.split(":")[1] ?? selectedProviderOption.providerId).slice(0, 12) ? (
-                        <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
-                          {(selectedProviderOption.providerId.split(":")[1] ?? selectedProviderOption.providerId).slice(0, 12)}
-                        </span>
-                      ) : null}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="start"
-                    className="w-[--radix-popover-trigger-width] border-border bg-card p-0"
+              <div className="st-plot" onPointerLeave={() => setOver(null)}>
+                {lines.map((line) => <div key={line} className="st-line" style={{ bottom: `${(line / top) * 100}%` }}><em>{formatCompactCount(line)}</em></div>)}
+                <div className="st-line" style={{ bottom: 0 }} />
+                {heights.map((height, index) => (
+                  <button
+                    key={selection.metrics[index].timestamp}
+                    type="button"
+                    className="st-slot"
+                    data-over={over === index || undefined}
+                    aria-label={`${date(index)}: ${count(height)} ${unit}`}
+                    onPointerEnter={() => setOver(index)}
+                    onFocus={() => setOver(index)}
+                    onBlur={() => setOver(null)}
+                    onClick={() => setOver(index)}
                   >
-                    <Command className="bg-card text-foreground">
-                      <CommandInput
-                        placeholder="Find provider..."
-                        className="text-sm text-foreground placeholder:text-muted-foreground"
-                      />
-                      <CommandList className="scrollbar-subtle max-h-64">
-                        <CommandEmpty className="py-4 text-sm text-muted-foreground">
-                          No providers found.
-                        </CommandEmpty>
-                        <CommandGroup className="p-1">
-                          {providerOptions.map((option) => (
-                            <CommandItem
-                              key={option.providerId}
-                              value={`${option.providerLabel} ${option.providerId}`}
-                              onSelect={() => {
-                                setSelectedProviderId(option.providerId);
-                                setProviderDropdownOpen(false);
-                              }}
-                              className="rounded px-2 py-2 text-sm text-muted-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
-                            >
-                              <span className="min-w-0 flex-1 truncate">
-                                {option.providerLabel}
-                              </span>
-                              {option.providerId !== ALL_PROVIDERS_ID &&
-                              option.providerLabel !==
-                                (option.providerId.split(":")[1] ?? option.providerId).slice(0, 12) ? (
-                                <span className="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
-                                  {(option.providerId.split(":")[1] ?? option.providerId).slice(0, 12)}
-                                </span>
-                              ) : null}
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  selectedProviderId === option.providerId
-                                    ? "opacity-100 text-foreground"
-                                    : "opacity-0",
-                                )}
-                              />
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="min-w-0">
-                <p className="mb-3 text-[10px] tracking-[0.04em] text-muted-foreground">
-                  Period
-                </p>
-                <Tabs
-                  value={selectedWindow}
-                  onValueChange={(value) => {
-                    setSelectedWindow(value as WindowKey);
-                    setGrouping(value === "365d" ? "weekly" : "daily");
-                  }}
-                >
-                  <TabsList variant="line">
-                    {WINDOW_OPTIONS.map((option) => (
-                      <TabsTrigger key={option.id} value={option.id}>
-                        {option.label}
-                      </TabsTrigger>
+                    <span className="st-bar" style={{ height: `${(height / top) * 100}%` }}>
+                      {cut(index).map((part) => (part.value > 0 ? <i key={part.name} style={{ flex: `${part.value} 0 0`, background: part.fill }} /> : null))}
+                    </span>
+                  </button>
+                ))}
+                {over !== null && over < heights.length ? (
+                  <div className="st-tip" data-left={over > heights.length / 2 || undefined} style={{ "--at": (over + 0.5) / heights.length } as CSSProperties}>
+                    <h3>{date(over)} · {count(heights[over])} {unit}</h3>
+                    <p>{selection.metrics[over].coverage === "missing" ? "No node reported" : `${visible.filter((provider) => (node ? provider === node : true) && selectStats([provider], range, grouping).metrics[over]?.coverage !== "missing").length} ${node ? "node" : "nodes"} reported`}</p>
+                    {cut(over).map((part) => (
+                      <div key={part.name}><u className="st-chip" style={{ background: part.fill }} /><span>{part.name}</span><b>{count(part.value)}</b><em>{percent(part.value / heights[over])}</em></div>
                     ))}
-                  </TabsList>
-                </Tabs>
+                  </div>
+                ) : null}
               </div>
+              <div className="st-days">{ticks.map((index) => <span key={index}>{date(index).split(" to ")[0]}</span>)}</div>
+            </div>
 
-              <div className="min-w-0">
-                <p className="mb-3 text-[10px] tracking-[0.04em] text-muted-foreground">
-                  Metric
-                </p>
-                <Tabs
-                  value={selectedMode}
-                  onValueChange={(value) => setSelectedMode(value as ChartMode)}
-                >
-                  <TabsList variant="line">
-                    {CHART_MODES.map((option) => (
-                      <TabsTrigger key={option.id} value={option.id}>
-                        {option.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
+            <div className="st-two">
+              <div>
+                <div className="st-head">
+                  <h2>{node ? "What it served" : "What was asked for"}</h2>
+                  <div className="pg-switch" role="group" aria-label="Split by">
+                    <button type="button" aria-pressed={split === "models"} onClick={() => { setSplit("models"); setLit(null); setShownParts(FIRST_ROWS); }}>Models</button>
+                    <button type="button" aria-pressed={split === "makers"} onClick={() => { setSplit("makers"); setLit(null); setShownParts(FIRST_ROWS); }}>Makers</button>
+                    {open.size > 0 ? <button type="button" aria-pressed={split === "open"} onClick={() => { setSplit("open"); setLit(null); setShownParts(FIRST_ROWS); }}>Open or closed</button> : null}
+                  </div>
+                </div>
+                <div className="st-cols"><span>{split === "models" ? "Model" : split === "makers" ? "Maker" : "Weights"}</span><span className="st-over" data-by={mode === "requests" || undefined}><b>Requests</b><em>share</em></span><span className="st-over" data-by={mode === "sats" || undefined}><b>Sats paid</b><em>share</em></span></div>
+                {leftRows.map(([name, row], index) => (
+                  <button key={name} type="button" className="st-row" style={{ "--n": Math.max(0, index - Math.max(FIRST_ROWS, shownParts - MORE_ROWS)) } as CSSProperties} data-on={lit === name || undefined} aria-pressed={lit === name} onClick={() => pick(name)}>
+                    <span className="st-name">
+                      <u className="st-chip" style={{ background: colour(name) }} />
+                      {split === "open" ? null : <Mark company={marks.get(name)} />}
+                      <span>{name}</span>
+                    </span>
+                    {share(row, totals)}
+                  </button>
+                ))}
+                {ranked.length > FIRST_ROWS ? (
+                  <p className="pg-rest">
+                    <span className="pg-count">{leftRows.length} of {ranked.length}</span>
+                    {shownParts < ranked.length ? <button type="button" onClick={() => setShownParts(shownParts + MORE_ROWS)}>Show {Math.min(MORE_ROWS, ranked.length - shownParts)} more</button> : null}
+                    {shownParts > FIRST_ROWS ? <button type="button" onClick={() => setShownParts(FIRST_ROWS)}>Show fewer</button> : null}
+                  </p>
+                ) : null}
               </div>
-
-              {relaySummary ? (
-                <div className="min-w-0 md:text-right">
-                  <p className="mb-3 text-[10px] tracking-[0.04em] text-muted-foreground">
-                    Relays
+              <div>
+                <div className="st-head"><h2>Which nodes served it</h2></div>
+                <div className="st-cols"><span>Node</span><span className="st-over" data-by={mode === "requests" || undefined}><b>Requests</b><em>share</em></span><span className="st-over" data-by={mode === "sats" || undefined}><b>Sats paid</b><em>share</em></span></div>
+                {rightRows.map((row, index) => (
+                  <button key={row.id} type="button" className="st-row" style={{ "--n": Math.max(0, index - Math.max(FIRST_ROWS, shownNodes - MORE_ROWS)) } as CSSProperties} data-on={nodeId === row.id || undefined} aria-pressed={nodeId === row.id} onClick={() => pickNode(row.id)}>
+                    <span className="st-name"><span>{nameOf.get(row.id)}</span></span>
+                    {share(row, network)}
+                  </button>
+                ))}
+                {nodesRanked.length > FIRST_ROWS ? (
+                  <p className="pg-rest">
+                    <span className="pg-count">{rightRows.length} of {nodesRanked.length}</span>
+                    {shownNodes < nodesRanked.length ? <button type="button" onClick={() => setShownNodes(shownNodes + MORE_ROWS)}>Show {Math.min(MORE_ROWS, nodesRanked.length - shownNodes)} more</button> : null}
+                    {shownNodes > FIRST_ROWS ? <button type="button" onClick={() => setShownNodes(FIRST_ROWS)}>Show fewer</button> : null}
                   </p>
-                  <Popover
-                    open={relayDetailOpen}
-                    onOpenChange={setRelayDetailOpen}
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        onPointerEnter={() => setRelayDetailOpen(true)}
-                        onPointerLeave={() => setRelayDetailOpen(false)}
-                        onFocus={() => setRelayDetailOpen(true)}
-                        onBlur={() => setRelayDetailOpen(false)}
-                        aria-label={`${relaySummary.answered} of ${relaySummary.total} relays responded`}
-                        className="flex h-8 items-center gap-1.5 rounded-full px-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:ml-auto"
-                      >
-                        {relaySummary.relays.map((relay) => (
-                          <span
-                            key={relay.url}
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full",
-                              relay.answered ? "bg-muted-foreground" : "bg-border",
-                            )}
-                          />
-                        ))}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="end"
-                      onOpenAutoFocus={(event) => event.preventDefault()}
-                      onCloseAutoFocus={(event) => event.preventDefault()}
-                      onPointerEnter={() => setRelayDetailOpen(true)}
-                      onPointerLeave={() => setRelayDetailOpen(false)}
-                      className="w-[min(88vw,18rem)] border-border bg-card p-2 shadow-xl"
-                    >
-                      <div className="space-y-1">
-                        {relaySummary.relays.map((relay) => (
-                          <div
-                            key={relay.url}
-                            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-1 py-0.5 text-[10px]"
-                          >
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <span
-                                className={cn(
-                                  "h-1.5 w-1.5 shrink-0 rounded-full",
-                                  relay.answered
-                                    ? "bg-muted-foreground"
-                                    : "bg-border",
-                                )}
-                              />
-                              <span className="truncate text-muted-foreground">
-                                {relay.host}
-                              </span>
-                            </span>
-                            <span
-                              className={cn(
-                                "shrink-0",
-                                relay.answered
-                                  ? "text-foreground"
-                                  : "text-muted-foreground",
-                              )}
-                            >
-                              {relay.label}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
-          </div>
 
-          <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <p>{today ? rangeLabel : "Loading period..."}</p>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="inline-flex items-center gap-1 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                  <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
-                  {selection.hasData && hasPartialData ? "Partial data" : "Data details"}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] space-y-3 text-xs text-muted-foreground">
-                <p>Periods include completed UTC days. Today is excluded.</p>
-                <p>Weekly bars run Thursday to Wednesday to preserve older reports. Only the selected dates are counted. Weekly view can include older totals with no daily breakdown, so its totals may be higher than Daily. Missing records are never filled with zeros or estimates.</p>
-                {data ? <p>{data.refreshedAt ? `Checked ${formatUpdatedAt(data.refreshedAt / 1000)} UTC.` : "Showing saved reports that relays have not confirmed yet."}</p> : null}
-                {selection.hasData && hasPartialCoverage ? <p>Some providers have no report for parts of this period. Totals and shares use the reports received.</p> : null}
-                {sanity.hiddenProviders > 0 ? <p>{sanity.hiddenProviders === 1 ? "One provider is" : `${sanity.hiddenProviders} providers are`} hidden: staging endpoints or a known test signer.</p> : null}
-                {sanity.droppedBuckets > 0 ? <p>{sanity.droppedBuckets === 1 ? "One provider report is" : `${sanity.droppedBuckets} provider reports are`} excluded: the reported revenue is orders of magnitude above the period median.</p> : null}
-                {data?.historyIncomplete ? <p>Some reports could not be retrieved.</p> : null}
-                {hasLegacy ? <p>Older reports contribute to totals and charts.</p> : null}
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {loading ? (
-            <div className="space-y-6">
-              <section className="border border-border bg-card px-4 py-5 shadow-sm shadow-black/5 sm:px-6 sm:py-6 dark:shadow-black/20">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-foreground">
-                    Model Usage
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Reported {selectedMode} over time, split by model.
-                  </p>
-                </div>
-
-                <div className="pt-2 sm:pt-3">
-                  <div className="min-w-0">
-                    <div className="h-[250px] w-full sm:h-[320px]">
-                      <div className="flex h-full items-end gap-2">
-                        {Array.from({ length: 12 }).map((_, index) => (
-                          <Skeleton
-                            key={`model-usage-bar-${index}`}
-                            className="flex-1"
-                            style={{ height: `${24 + ((index * 13) % 64)}%` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 min-w-0 border-t border-border pt-4">
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-foreground">
-                        Top Models
-                      </p>
-                    </div>
-                    <div className="columns-1 lg:columns-2 lg:gap-10">
-                      {Array.from({ length: 10 }).map((_, index) => (
-                        <div
-                          key={`top-model-row-${index}`}
-                          className="mb-0.5 grid min-h-14 break-inside-avoid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-border/60 px-2 py-2.5"
-                        >
-                          <Skeleton className="h-3 w-5" />
-                          <div className="flex h-7 w-8 items-center gap-2">
-                            <Skeleton className="h-7 w-0.5 shrink-0" />
-                            <Skeleton className="size-5 shrink-0" />
-                          </div>
-                          <div className="min-w-0 space-y-1.5">
-                            <Skeleton className="h-3 w-40 max-w-full" />
-                            <Skeleton className="h-2.5 w-20 max-w-full" />
-                          </div>
-                          <Skeleton className="ml-auto h-3 w-20" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="border border-border bg-card px-4 py-5 shadow-sm shadow-black/5 sm:px-6 sm:py-6 dark:shadow-black/20">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-foreground">
-                    Provider Share
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Share of reported {selectedMode} by provider in this period.
-                  </p>
-                </div>
-                <div className="mt-5 flex h-3 w-full overflow-hidden bg-muted">
-                  {[28, 22, 18, 14, 10, 8].map((width, index) => (
-                    <Skeleton
-                      key={`provider-share-segment-${index}`}
-                      className="h-full"
-                      style={{ width: `${width}%` }}
-                    />
-                  ))}
-                </div>
-                <div className="grid gap-x-8 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div
-                      key={`provider-share-row-${index}`}
-                      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border/60 py-2.5"
-                    >
-                      <Skeleton className="h-7 w-0.5" />
-                      <div className="min-w-0 space-y-1.5">
-                        <Skeleton className="h-3 w-32 max-w-full" />
-                        <Skeleton className="h-2.5 w-20 max-w-full" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Skeleton className="ml-auto h-3 w-16" />
-                        <Skeleton className="ml-auto h-2.5 w-10" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 border-t border-border py-3">
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              </section>
-
-              <section className="border border-border bg-card px-4 py-5 shadow-sm shadow-black/5 sm:px-6 sm:py-6 dark:shadow-black/20">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-foreground">
-                    Model Share
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    How {selectedMode} concentrates across models in the
-                    selected period.
-                  </p>
-                </div>
-                <div className="grid gap-6 pt-2 sm:pt-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-center">
-                  <Skeleton className="mx-auto aspect-square h-[220px] w-[220px] rounded-full sm:h-[240px] sm:w-[240px]" />
-                  <div>
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <p className="text-xs font-medium text-foreground">
-                        Share Breakdown
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Percent of selected total
-                      </p>
-                    </div>
-                    <div className="space-y-0.5">
-                      {Array.from({ length: 6 }).map((_, index) => (
-                        <div
-                          key={`model-share-row-${index}`}
-                          className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-1.5 py-2 text-xs"
-                        >
-                          <div className="flex h-7 w-8 items-center gap-2">
-                            <Skeleton className="h-7 w-0.5 shrink-0" />
-                            <Skeleton className="size-5 shrink-0" />
-                          </div>
-                          <div className="space-y-1">
-                            <Skeleton className="h-3 w-44 max-w-full" />
-                            <Skeleton className="h-3 w-28 max-w-full" />
-                          </div>
-                          <Skeleton className="h-3 w-12" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
-          ) : error ? (
-            <div className="py-24 text-center text-sm text-muted-foreground">
-              {error}
-            </div>
-          ) : !modelUsageMix || modelUsageMix.metrics.length === 0 ? (
-            <div className="space-y-4 py-24 text-center text-sm text-muted-foreground">
-              <p>No usable {grouping === "weekly" ? "weekly" : "daily"} records were received for this period. Missing reports do not mean zero activity.</p>
-              {selectedWindow !== "1d" ? (
-                <Button variant="outline" onClick={() => setGrouping(grouping === "daily" ? "weekly" : "daily")}>
-                  {grouping === "daily" ? "Show weekly totals" : "Show daily totals"}
-                </Button>
-              ) : null}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <TopModelsUsageChart
-                mix={modelUsageMix}
-                displayUnit="sat"
-                usdPerSat={null}
-                mode={selectedMode}
-                grouping={grouping}
-                onGroupingChange={selectedWindow === "1d" ? undefined : setGrouping}
-              />
-
-              {showProviderComparison ? (
-                <ProviderComparisonChart
-                  data={providerComparison}
-                  mode={selectedMode}
-                  description={`Share of reported ${selectedMode} by provider in this period.`}
-                />
-              ) : null}
-              <ModelShareChart
-                data={modelShare}
-                mode={selectedMode}
-                description={`How ${selectedMode} concentrates across models in the selected period.`}
-              />
-            </div>
-          )}
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+            <p className="st-foot">Whole UTC days, today left out. A node that sends no report adds nothing, so real use is higher.</p>
+            <details className="st-how">
+              <summary>How this is counted</summary>
+              <p>{dayKey(range.start)} to {dayKey(range.end - DAY_MS)} UTC. {data?.refreshedAt ? `Checked ${formatUpdatedAt(data.refreshedAt / 1000)} UTC.` : "Showing saved reports the relays have not confirmed yet."}</p>
+              {grouping === "weekly" ? <p>Over a year the bars are weeks, Thursday to Wednesday, so that older reports fit. They can hold older totals that have no daily split.</p> : null}
+              {hasPartialCoverage ? <p>Some nodes have no report for parts of this period. Totals and shares use the reports received. Nothing missing is filled in.</p> : null}
+              {sanity.hiddenProviders > 0 ? <p>{sanity.hiddenProviders === 1 ? "One node is" : `${sanity.hiddenProviders} nodes are`} left out: test or staging nodes.</p> : null}
+              {sanity.droppedBuckets > 0 ? <p>{sanity.droppedBuckets === 1 ? "One report is" : `${sanity.droppedBuckets} reports are`} left out: the sats they claim are far above every other report.</p> : null}
+              {data?.historyIncomplete ? <p>Some reports could not be fetched.</p> : null}
+              {relays.length > 0 ? <p>Relays: {relays.map((relay) => `${relay.url.replace(/^wss:\/\//, "").replace(/\/$/, "")} ${RELAY_STATE_META[relay.state].label}`).join(", ")}.</p> : null}
+            </details>
+          </>
+        )}
       </section>
     </SiteShell>
   );
 }
+
+
 
 export default function StatsPage() {
   const [queryClient] = useState(
