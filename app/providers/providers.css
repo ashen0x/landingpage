@@ -1,0 +1,109 @@
+/* The Providers page: the nodes, one line each, and beside the list the one you picked. It is set
+   with the page kit (components/layout/pages.css) and adds only what that kit does not have. */
+
+.pv-review {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* a reviewer approved it: apps send requests here */
+.pv-review[data-ok] {
+  color: var(--gold);
+}
+.pv-list .pg-name code {
+  font-family: var(--sans);
+  font-size: 13px;
+}
+.pv-facts {
+  margin: 22px 0 0;
+}
+.pv-facts div {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  gap: 0 12px;
+  align-items: center;
+  min-height: 42px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+}
+.pv-facts dt {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pv-facts dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pv-facts button {
+  min-width: 4.4rem;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 200ms, box-shadow 200ms;
+}
+.pv-facts button:hover {
+  box-shadow: inset 0 0 0 1px var(--faint);
+  color: var(--ink);
+}
+.pv-why {
+  margin: 22px 0 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.pv-why b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.pv-list .pg-row {
+  width: 100%;
+  text-align: left;
+}
+/* a node's facts under its row, where there is no card beside the list */
+.pv-under {
+  padding: 4px 4px 22px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+}
+.pv-under .pg-about {
+  margin-top: 12px;
+}
+@media (min-width: 1200px) {
+  .pv-under {
+    display: none;
+  }
+}
+.pv-fold {
+  display: block;
+  width: 100%;
+  padding: 16px 4px;
+  color: var(--faint);
+  font-size: 13px;
+  text-align: left;
+  transition: color 200ms;
+}
+.pv-fold:hover {
+  color: var(--ink);
+}
+@media (max-width: 760px) {
+  .pv-list .pv-review:not([data-ok]) {
+    font-size: 10px;
+  }
+}
