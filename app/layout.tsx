@@ -4,29 +4,17 @@ import { ModelsProvider } from "./contexts/ModelsContext";
 import { NostrProvider } from "@/context/NostrContext";
 import { PricingProvider } from "./contexts/PricingContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { Michroma, JetBrains_Mono } from "next/font/google";
-
-const michroma = Michroma({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-michroma",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-});
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://routstr.com"),
   title: {
-    default: "Routstr - Decentralized AI Inference Router",
+    default: "Routstr: an open market for AI, paid in sats",
     template: "%s | Routstr",
   },
   description:
-    "The future of AI access is permissionless, private, and decentralized. Access top AI models with Bitcoin Lightning payments.",
+    "Ask any AI model and pay per request in bitcoin. Independent nodes sell the models and your app picks the best price. No account, no card, no subscription.",
   keywords: [
     "AI",
     "Decentralized AI",
@@ -56,16 +44,16 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://routstr.com",
-    title: "Routstr - Decentralized AI Inference Router",
+    title: "Routstr: an open market for AI, paid in sats",
     description:
-      "Access top AI models with Bitcoin Lightning payments. Permissionless, private, and decentralized.",
+      "Ask any AI model and pay per request in bitcoin. No account, no card, no subscription.",
     siteName: "Routstr",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Routstr - Decentralized AI Inference Router",
+    title: "Routstr: an open market for AI, paid in sats",
     description:
-      "Access top AI models with Bitcoin Lightning payments. Permissionless, private, and decentralized.",
+      "Ask any AI model and pay per request in bitcoin. No account, no card, no subscription.",
     creator: "@routstr",
   },
   icons: {
@@ -84,10 +72,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${GeistSans.variable} ${GeistMono.variable}`}
+      suppressHydrationWarning
+    >
       <body
         suppressHydrationWarning
-        className={`${michroma.variable} ${jetbrainsMono.variable} font-mono antialiased min-h-screen bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground`}
+        className="antialiased min-h-screen bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground"
       >
         <ThemeProvider>
           <ModelsProvider>

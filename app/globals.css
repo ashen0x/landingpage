@@ -6,24 +6,25 @@
 
 :root {
   --radius: 0rem;
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #0a0a0a;
-  --primary-foreground: #fafafa;
-  --secondary: #f0f0f0;
-  --secondary-foreground: #0a0a0a;
-  --muted: #f0f0f0;
-  --muted-foreground: #6b6b6b;
-  --accent: #f0f0f0;
-  --accent-foreground: #0a0a0a;
+  /* day: warm white paper, black ink, a deep gold */
+  --background: #f5f5f2;
+  --foreground: #0a0a0b;
+  --card: #fbfbf9;
+  --card-foreground: #0a0a0b;
+  --popover: #fdfdfb;
+  --popover-foreground: #0a0a0b;
+  --primary: #0a0a0b;
+  --primary-foreground: #f5f5f2;
+  --secondary: #ebebe6;
+  --secondary-foreground: #0a0a0b;
+  --muted: #ebebe6;
+  --muted-foreground: #5d5d59;
+  --accent: #e6e6e0;
+  --accent-foreground: #0a0a0b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #e2e2e2;
-  --input: #e2e2e2;
-  --ring: #b5b5b5;
+  --border: #dbdbd4;
+  --input: #dbdbd4;
+  --ring: #a9a9a2;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -37,39 +38,40 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
-  --brand: #f7931a;
-  --brand-foreground: #0a0a0a;
-  --success: #34d399;
-  --success-foreground: #0a0a0a;
-  /* Syntax-highlight preset (VS Code Light+) for code blocks */
-  --code-bg: #fafafa;
-  --code-blue: #0451a5;
-  --code-purple: #af00db;
-  --code-orange: #a31515;
-  --code-yellow: #795e26;
-  --code-lightblue: #001080;
-  --code-plain: #383a42;
+  --brand: #a4610b;
+  --brand-foreground: #fbfbf9;
+  --success: #12805c;
+  --success-foreground: #fbfbf9;
+  /* Syntax-highlight preset for code blocks */
+  --code-bg: #fbfbf9;
+  --code-blue: #2c4f9e;
+  --code-purple: #6a4aa6;
+  --code-orange: #a4610b;
+  --code-yellow: #6f5a1c;
+  --code-lightblue: #24507a;
+  --code-plain: #2b2b2a;
 }
 
 .dark {
-  --background: #111111;
-  --foreground: #e5e5e5;
-  --card: #161616;
-  --card-foreground: #e5e5e5;
-  --popover: #161616;
-  --popover-foreground: #e5e5e5;
-  --primary: #e5e5e5;
-  --primary-foreground: #111111;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #e5e5e5;
-  --muted: #1a1a1a;
-  --muted-foreground: #a1a1a1;
-  --accent: #1a1a1a;
-  --accent-foreground: #e5e5e5;
+  /* night: the black the light is drawn on, one white, one gold */
+  --background: #050506;
+  --foreground: #f4f4f2;
+  --card: #0a0a0c;
+  --card-foreground: #f4f4f2;
+  --popover: #0d0d10;
+  --popover-foreground: #f4f4f2;
+  --primary: #f4f4f2;
+  --primary-foreground: #050506;
+  --secondary: #121215;
+  --secondary-foreground: #f4f4f2;
+  --muted: #111114;
+  --muted-foreground: #a2a2a0;
+  --accent: #15151a;
+  --accent-foreground: #f4f4f2;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #2c2c2c;
-  --input: #2c2c2c;
-  --ring: #7a7a7a;
+  --border: #202024;
+  --input: #202024;
+  --ring: #6c6c70;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -83,18 +85,18 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
-  --brand: #f7931a;
-  --brand-foreground: #0a0a0a;
-  --success: #34d399;
-  --success-foreground: #0a0a0a;
-  /* Syntax-highlight preset (VS Code Dark+) for code blocks */
-  --code-bg: #0a0a0a;
-  --code-blue: #4fc1ff;
-  --code-purple: #c586c0;
-  --code-orange: #ce9178;
-  --code-yellow: #dcdcaa;
-  --code-lightblue: #9cdcfe;
-  --code-plain: #d4d4d4;
+  --brand: #f2b25c;
+  --brand-foreground: #050506;
+  --success: #5fd0a4;
+  --success-foreground: #050506;
+  /* Syntax-highlight preset for code blocks */
+  --code-bg: #08080a;
+  --code-blue: #a9c1ff;
+  --code-purple: #c8b6ff;
+  --code-orange: #f2b25c;
+  --code-yellow: #e6d6a4;
+  --code-lightblue: #bcd3ff;
+  --code-plain: #e4e4e1;
 }
 
 @theme inline {
@@ -104,10 +106,10 @@
   --color-accent: var(--accent);
   --color-border: var(--border);
   --color-card: var(--card);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono:
-    var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-heading: var(--font-michroma), var(--font-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -157,24 +159,14 @@
 }
 
 body {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   overflow-x: hidden;
 }
 
-/* Base heading font — applies everywhere including the hero title. */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
-}
-
-/* Wordmark treatment for page headings. The hero title is structurally
-   excluded so its own classes always stay authoritative — heading tweaks
-   must never leak into it. */
-h1:not([data-hero-title]), h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  /* Michroma ships one weight; a hairline stroke visually thickens it. */
-  -webkit-text-stroke: 0.5px currentColor;
+/* Headings are set like the home page: drawn tight. */
+:is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.03em;
 }
 
 @layer base {

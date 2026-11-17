@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { Band } from "@/components/layout/Band";
 import { cn } from "@/lib/utils";
 
 interface SiteShellProps {
@@ -19,13 +20,14 @@ export function SiteShell({
   return (
     <div
       className={cn(
-        "flex min-h-screen flex-col bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground",
+        "relative isolate flex min-h-screen flex-col bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground",
         className
       )}
     >
+      <Band />
       <Header />
       {useMain ? (
-        <main className={cn("flex-grow pt-[72px] sm:pt-[80px]", contentClassName)}>{children}</main>
+        <main className={cn("relative z-[1] flex-grow pt-[72px] sm:pt-[80px]", contentClassName)}>{children}</main>
       ) : (
         children
       )}

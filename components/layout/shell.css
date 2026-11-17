@@ -1,0 +1,334 @@
+/* The bar at the top and the foot of every page. Almost nothing: the name, a
+   few words, one pill. They draw with the page tokens, so they follow the
+   light and dark themes; the home page pins them to dark. */
+
+.hd,
+.ft {
+  --ink: var(--foreground);
+  --dim: color-mix(in srgb, var(--foreground) 62%, transparent);
+  --faint: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --hair: color-mix(in srgb, var(--foreground) 12%, transparent);
+  --gold: var(--brand);
+  --pad: clamp(20px, 5.4vw, 88px);
+  --out: cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.hd :focus-visible,
+.ft :focus-visible {
+  outline: 1.5px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ── the bar ────────────────────────────────────────────────────────────── */
+
+.hd {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 50;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.hd-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2.4vw, 34px);
+  height: 68px;
+  padding: 0 var(--pad);
+  transition: background-color 400ms, backdrop-filter 400ms;
+}
+.hd-bar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--hair);
+  opacity: 0;
+  transition: opacity 400ms;
+}
+.hd:is([data-scrolled], [data-open]) .hd-bar {
+  background: color-mix(in srgb, var(--background) 66%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+.hd:is([data-scrolled], [data-open]) .hd-bar::after {
+  opacity: 1;
+}
+.hd-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.hd-brand svg {
+  width: 22px;
+  height: 22px;
+}
+.hd-nav {
+  display: none;
+  align-items: center;
+  gap: clamp(18px, 2.2vw, 30px);
+  margin-right: auto;
+  color: var(--dim);
+}
+.hd-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 0;
+  color: var(--dim);
+  transition: color 200ms;
+}
+.hd-link::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 420ms var(--out);
+}
+.hd-link:hover,
+.hd-link[aria-current="page"],
+.hd-link[aria-expanded="true"] {
+  color: var(--ink);
+}
+.hd-link:hover::after,
+.hd-link[aria-current="page"]::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.hd-link[aria-current="page"]::after {
+  background: var(--gold);
+}
+.hd-link svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.7;
+  transition: rotate 300ms var(--out);
+}
+.hd-link[aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+.hd-quiet {
+  display: none;
+}
+.hd-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--dim);
+  transition: color 200ms, box-shadow 200ms;
+}
+.hd-icon:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+.hd-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.hd-theme {
+  display: none;
+  margin: 0 calc(clamp(14px, 2.4vw, 34px) * -0.5);
+}
+.hd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0 14px 0 16px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-weight: 500;
+  transition: background-color 260ms, color 260ms, box-shadow 260ms;
+}
+.hd-pill:hover {
+  background: var(--ink);
+  color: var(--background);
+  box-shadow: none;
+}
+.hd-pill svg {
+  width: 14px;
+  height: 14px;
+}
+.hd-menu {
+  margin: 0 -8px 0 calc(clamp(14px, 2.4vw, 34px) * -0.5);
+}
+
+/* More, and on a phone the whole menu: one sheet of glass under the bar */
+.hd-panel {
+  position: absolute;
+  top: 68px;
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: calc(100svh - 68px);
+  padding: 10px var(--pad) 22px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: inset 0 -1px 0 var(--hair);
+  animation: hd-drop 420ms var(--out);
+}
+@keyframes hd-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.hd-panel :is(a, button) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 13px 2px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  transition: padding 500ms var(--out), color 300ms;
+}
+.hd-panel > :last-child,
+.hd-panel-phone:last-child > :last-child {
+  box-shadow: none;
+}
+.hd-panel :is(a, button):hover {
+  padding-left: 10px;
+  color: var(--gold);
+}
+.hd-panel a span {
+  color: var(--dim);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: right;
+}
+.hd-panel-phone {
+  display: contents;
+}
+
+@media (min-width: 900px) {
+  .hd-nav,
+  .hd-quiet,
+  .hd-theme {
+    display: inline-flex;
+  }
+  .hd-pill {
+    margin-left: 0;
+  }
+  .hd-menu,
+  .hd-panel-phone {
+    display: none;
+  }
+  .hd-panel {
+    top: 62px;
+    right: auto;
+    left: var(--more, 380px);
+    width: 380px;
+    padding: 6px 18px;
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px var(--hair), 0 40px 80px -40px rgb(0 0 0 / 0.6);
+  }
+  .hd-panel :is(a, button) {
+    font-size: 15px;
+  }
+}
+
+/* ── the foot ───────────────────────────────────────────────────────────── */
+
+.ft {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 22px;
+  padding: 28px var(--pad) 30px;
+  box-shadow: inset 0 1px 0 var(--hair);
+  color: var(--faint);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.ft-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 32px;
+}
+.ft nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  color: var(--dim);
+}
+.ft nav a {
+  transition: color 200ms;
+}
+.ft nav a:hover {
+  color: var(--ink);
+}
+.ft-base {
+  font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── the strip of light at the top of a page ────────────────────────────── */
+
+.bd {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: min(420px, 58svh);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 900ms ease;
+  /* it fades into the page below, and stays quiet behind the title on the left */
+  mask-image: linear-gradient(to bottom, #000 22%, transparent 94%), linear-gradient(to right, rgb(0 0 0 / 0.2), #000 50%);
+  mask-composite: intersect;
+}
+.bd[data-ready] {
+  opacity: 1;
+}
+/* on paper the light is drawn as ink */
+:root:not(.dark) .bd {
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: multiply;
+}
+:root:not(.dark) .bd[data-ready] {
+  opacity: 0.8;
+}
+/* on a phone the words run the full width, so the strip keeps to the top and stays faint */
+@media (max-width: 760px) {
+  .bd {
+    height: 280px;
+    mask-image: linear-gradient(to bottom, #000 10%, transparent 92%);
+  }
+  .bd[data-ready],
+  :root:not(.dark) .bd[data-ready] {
+    opacity: 0.5;
+  }
+}

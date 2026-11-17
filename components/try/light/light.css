@@ -1,0 +1,919 @@
+/* The page around the light. Black, one white, one gold, and almost no boxes:
+   the fibres are the picture, the type is the rest.
+
+   Two ways to lay the scenes out. With room (data-film) they are pinned on
+   one screen and scrolling plays through them like a film. Without it they
+   simply stack, each as tall as the screen. */
+
+.lt {
+  --ink: #f4f4f2;
+  --dim: rgba(244, 244, 242, 0.6);
+  --faint: rgba(244, 244, 242, 0.36);
+  --hair: rgba(244, 244, 242, 0.12);
+  --gold: #f2b25c;
+  --pad: clamp(20px, 5.4vw, 88px);
+  --sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  --out: cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  background: #050506;
+  color: var(--dim);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.lt-film a,
+.lt-film button,
+.lt-rail button {
+  color: inherit;
+}
+.lt :is(.lt-film, .lt-rail) :focus-visible {
+  outline: 1.5px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.lt ::selection {
+  background: var(--gold);
+  color: #050506;
+}
+
+:root:has(.lt) body {
+  background: #050506;
+}
+.lt-light {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.lt[data-ready] .lt-light {
+  opacity: 1;
+}
+.lt[data-ready="flat"] .lt-light {
+  background:
+    radial-gradient(60% 50% at 72% 42%, rgba(150, 175, 255, 0.2), transparent 70%),
+    radial-gradient(30% 24% at 60% 46%, rgba(242, 178, 92, 0.14), transparent 70%);
+}
+
+/* the bar and the foot are the site's own; here they only learn to stay out of the film's way */
+.lt[data-film] .hd:not([data-open]) .hd-bar {
+  background: none;
+  backdrop-filter: none;
+}
+.lt[data-film] .hd:not([data-open]) .hd-bar::after {
+  opacity: 0;
+}
+.lt .ft {
+  background: rgba(5, 5, 6, 0.7);
+  backdrop-filter: blur(18px);
+}
+.lt-film svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lt-link::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 420ms var(--out);
+}
+.lt-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* ── the rail ───────────────────────────────────────────────────────────── */
+
+.lt-rail {
+  position: fixed;
+  top: 50%;
+  right: clamp(14px, 2vw, 30px);
+  z-index: 9;
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  translate: 0 -50%;
+  /* quiet until the page moves or you reach for it */
+  opacity: 0.32;
+  transition: opacity 700ms ease;
+}
+.lt-rail:is([data-awake], :hover, :focus-within) {
+  opacity: 1;
+  transition-duration: 250ms;
+}
+.lt-rail button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 22px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.lt-rail span {
+  opacity: 0;
+  translate: 6px 0;
+  transition: opacity 300ms, translate 400ms var(--out);
+}
+.lt-rail i {
+  width: 9px;
+  height: 1px;
+  background: currentColor;
+  transition: width 500ms var(--out), background-color 300ms;
+}
+/* the names come out when you reach for the rail; they do not sit on the light all the time */
+.lt-rail:is(:hover, :focus-within) span {
+  opacity: 0.55;
+  translate: 0 0;
+}
+.lt-rail button:is(:hover, :focus-visible) span,
+.lt-rail:is(:hover, :focus-within) button[aria-current] span {
+  opacity: 1;
+}
+.lt-rail button:hover,
+.lt-rail button[aria-current] {
+  color: var(--ink);
+}
+.lt-rail button[aria-current] i {
+  width: 22px;
+  background: var(--ink);
+}
+@media (min-width: 1100px) {
+  .lt-rail {
+    display: flex;
+  }
+}
+
+/* ── a scene ────────────────────────────────────────────────────────────── */
+
+.lt-film {
+  position: relative;
+  z-index: 1;
+}
+.lt-part {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 118svh;
+  padding: 120px var(--pad);
+}
+.lt-in {
+  max-width: 100%;
+}
+/* headings run as wide as they like; what is read stays a comfortable measure */
+.lt-in > :is(.lt-lede, .lt-rows, .lt-cta, .lt-facts) {
+  max-width: 34rem;
+}
+.lt-part[data-side="right"] {
+  align-items: flex-end;
+}
+.lt-part[data-side="center"] {
+  align-items: center;
+  text-align: center;
+}
+.lt-part[data-side="center"] .lt-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: auto;
+}
+.lt-hero {
+  min-height: 100svh;
+  padding-top: 132px;
+  padding-bottom: 96px;
+}
+.lt-hero .lt-facts {
+  max-width: none;
+}
+
+/* the film: every scene on one pinned screen, shown in its turn */
+.lt[data-film] .lt-film {
+  height: calc((var(--scenes) - 1) * 105svh + 100svh);
+}
+.lt[data-film] .lt-screen {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+.lt[data-film] .lt-part {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  padding: 92px var(--pad) 44px;
+  visibility: hidden;
+  pointer-events: none;
+}
+.lt[data-film] .lt-part[data-live] {
+  visibility: visible;
+}
+.lt[data-film] .lt-in {
+  opacity: var(--show, 0);
+  transform: translateY(var(--drift, 0));
+  will-change: opacity, transform;
+}
+.lt[data-film] .lt-part[data-live] .lt-in {
+  pointer-events: auto;
+}
+/* the cable and the horizon lie along the foot of the screen: keep the words above them */
+.lt[data-film] :is(.lt-pay, .lt-open) {
+  padding-bottom: 24svh;
+}
+/* the strings swing wider than the cable: the words stand higher */
+.lt[data-film] .lt-voices {
+  padding-bottom: 37svh;
+}
+@media (min-width: 761px) and (min-aspect-ratio: 1/1) {
+  .lt:not([data-film]) :is(.lt-pay, .lt-open) {
+    padding-bottom: 40svh;
+  }
+  .lt:not([data-film]) .lt-voices {
+    padding-bottom: 50svh;
+  }
+}
+
+.lt-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 clamp(18px, 3vh, 34px);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.lt h1,
+.lt h2 {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.046em;
+}
+.lt h1 {
+  font-size: clamp(3.1rem, 8.3vw, 8.6rem);
+  line-height: 0.92;
+}
+.lt h2 {
+  font-size: clamp(2.6rem, 5.9vw, 5.9rem);
+  line-height: 0.95;
+}
+.lt h2 b {
+  color: var(--gold);
+  font-weight: inherit;
+}
+.lt h2.lt-label {
+  margin: 0 0 clamp(14px, 2.2vh, 22px);
+  color: var(--dim);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.14em;
+}
+/* each line waits below its own mask and rises when the scene comes in */
+.lt .ln {
+  display: block;
+  overflow: hidden;
+  margin: -0.08em -0.06em -0.16em;
+  padding: 0.08em 0.06em 0.16em;
+}
+.lt .ln > span {
+  display: block;
+  white-space: nowrap;
+  transform: translateY(118%);
+  transition: transform 1300ms var(--out);
+  transition-delay: calc(var(--i) * 90ms + var(--wait, 0ms));
+}
+.lt [data-in] .ln > span {
+  transform: none;
+}
+.lt-lede {
+  margin: clamp(18px, 3.2vh, 36px) 0 0;
+  font-size: clamp(1.06rem, 1.42vw, 1.3rem);
+  line-height: 1.45;
+  letter-spacing: -0.012em;
+  color: var(--dim);
+  text-wrap: pretty;
+}
+/* the rest of a scene follows its heading in */
+.lt-label,
+.lt-lede,
+.lt-cta,
+.lt-in > .lt-link,
+.lt-facts,
+.lt-code,
+.lt-tools,
+.lt-rows,
+.lt-voice,
+.lt-repos {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 1000ms ease, transform 1200ms var(--out);
+  transition-delay: calc(260ms + var(--wait, 0ms));
+}
+.lt-label {
+  transition-delay: var(--wait, 0ms);
+}
+.lt-cta,
+.lt-in > .lt-link,
+.lt-code,
+.lt-rows,
+.lt-voice,
+.lt-repos {
+  transition-delay: calc(380ms + var(--wait, 0ms));
+}
+.lt-facts,
+.lt-tools {
+  transition-delay: calc(500ms + var(--wait, 0ms));
+}
+.lt [data-in] :is(.lt-label, .lt-lede, .lt-cta, .lt-link, .lt-facts, .lt-code, .lt-tools, .lt-rows, .lt-voice, .lt-repos) {
+  opacity: 1;
+  transform: none;
+}
+/* the light comes first: the words wait until the cable has crossed the page and begun to open */
+.lt-hero {
+  --wait: 1400ms;
+}
+
+.lt-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  margin-top: clamp(24px, 4vh, 44px);
+}
+.lt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 54px;
+  padding: 0 8px 0 26px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #050506 !important;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: background-color 300ms;
+}
+.lt-btn svg {
+  box-sizing: content-box;
+  padding: 12px;
+  border-radius: 50%;
+  background: #050506;
+  color: var(--ink);
+  transition: transform 500ms var(--out), background-color 300ms;
+}
+.lt-btn:hover {
+  background: #fff;
+}
+.lt-btn:hover svg {
+  background: var(--gold);
+  color: #050506;
+  transform: rotate(-45deg);
+}
+.lt-link {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  padding: 4px 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 1px 0 var(--hair);
+}
+.lt-in > .lt-link {
+  margin-top: clamp(22px, 3.8vh, 40px);
+}
+.lt-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+  margin: clamp(40px, 8.5vh, 96px) 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.lt-facts li + li::before {
+  content: "/";
+  margin-right: 26px;
+  color: var(--hair);
+}
+
+/* rows: a name, what it is, and a hairline under it */
+.lt-rows,
+.lt-tools,
+.lt-repos {
+  margin: clamp(22px, 3.6vh, 38px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lt-rows > div,
+.lt-tools a {
+  display: grid;
+  grid-template-columns: 7.2rem 1fr auto;
+  align-items: baseline;
+  gap: 16px;
+  padding: 15px 2px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  font-size: 15px;
+}
+.lt-rows > div:first-child,
+.lt-tools li:first-child a {
+  box-shadow: inset 0 -1px 0 var(--hair), inset 0 1px 0 var(--hair);
+}
+.lt-rows dt,
+.lt-tools b {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.lt-rows dd {
+  margin: 0;
+}
+
+/* ── build: the code and the tools ──────────────────────────────────────── */
+
+.lt-build .lt-in {
+  width: min(100%, 41rem);
+}
+.lt-build .lt-in > * {
+  max-width: none;
+}
+@media (min-width: 1100px) {
+  /* clear of the rail */
+  .lt-build {
+    padding-right: calc(var(--pad) + 64px) !important;
+  }
+}
+.lt-code {
+  margin-top: clamp(22px, 3.6vh, 42px);
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(10, 10, 12, 0.72);
+  box-shadow: inset 0 0 0 1px var(--hair), 0 40px 80px -40px #000;
+  backdrop-filter: blur(22px);
+}
+.lt-code-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 8px 0 6px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  font-size: 13.5px;
+}
+.lt-code-bar [role="tablist"] {
+  display: flex;
+  height: 100%;
+}
+.lt-code-bar button {
+  position: relative;
+  height: 100%;
+  padding: 0 14px;
+  color: var(--faint);
+  transition: color 200ms;
+}
+.lt-code-bar [role="tab"]::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: 0;
+  left: 14px;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transition: transform 420ms var(--out);
+}
+.lt-code-bar button:hover,
+.lt-code-bar [aria-selected="true"] {
+  color: var(--ink);
+}
+.lt-code-bar [aria-selected="true"]::after {
+  transform: scaleX(1);
+}
+.lt-copy {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.lt-code-body {
+  display: grid;
+}
+.lt-code pre {
+  grid-area: 1 / 1;
+  min-width: 0;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 160ms, visibility 0s 160ms;
+  margin: 0;
+  padding: 18px 22px 20px;
+  overflow-x: auto;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.85;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+.lt-code pre[data-on] {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 160ms;
+}
+.lt-code pre[data-on] span {
+  animation: lt-type 500ms var(--out) both;
+  animation-delay: calc(60ms + var(--i) * 45ms);
+}
+@keyframes lt-type {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.lt-code pre i {
+  color: var(--gold);
+  font-style: normal;
+}
+.lt-code pre em {
+  color: var(--faint);
+  font-style: normal;
+}
+.lt-tools a {
+  transition: color 300ms, padding 500ms var(--out);
+}
+.lt-tools svg {
+  align-self: center;
+  color: var(--faint);
+  transition: transform 500ms var(--out), color 300ms;
+}
+.lt-tools a:hover {
+  padding-left: 10px;
+  color: var(--ink);
+}
+.lt-tools a:hover b {
+  color: var(--gold);
+}
+.lt-tools a:hover svg {
+  color: var(--gold);
+  transform: translateX(4px);
+}
+/* with room, the tools sit two by two, so the scene fits one screen */
+@media (min-width: 900px) and (min-aspect-ratio: 1/1) {
+  .lt .lt-tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 30px;
+    margin-top: clamp(14px, 2.4vh, 26px);
+  }
+  .lt .lt-tools a {
+    grid-template-columns: 1fr auto;
+    gap: 2px 14px;
+    height: 100%;
+    padding: 12px 2px 13px;
+    font-size: 14px;
+  }
+  .lt .lt-tools span {
+    grid-column: 1;
+  }
+  .lt .lt-tools svg {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+  }
+  .lt .lt-tools li:nth-child(2) a {
+    box-shadow: inset 0 -1px 0 var(--hair), inset 0 1px 0 var(--hair);
+  }
+  .lt .lt-build h2 {
+    font-size: clamp(2.4rem, 4.7vw, 4.6rem);
+  }
+  @media (max-height: 880px) {
+    .lt .lt-build h2 {
+      font-size: clamp(2.2rem, 3.9vw, 3.5rem);
+    }
+    .lt .lt-code pre {
+      line-height: 1.7;
+    }
+  }
+}
+
+/* a short screen: the same scene, drawn a little smaller */
+@media (max-height: 780px) {
+  .lt[data-film] .lt-build {
+    padding-top: 84px;
+    padding-bottom: 22px;
+  }
+  .lt[data-film] .lt-build h2 {
+    font-size: clamp(2rem, 3.3vw, 2.9rem);
+  }
+  .lt[data-film] .lt-build .lt-label {
+    margin-bottom: 12px;
+  }
+  .lt[data-film] .lt-build .lt-lede {
+    margin-top: 12px;
+    font-size: 1rem;
+  }
+  .lt[data-film] .lt-code {
+    margin-top: 16px;
+  }
+  .lt[data-film] .lt-code pre {
+    padding: 12px 20px 14px;
+    line-height: 1.6;
+  }
+  .lt[data-film] .lt-tools a {
+    padding: 9px 2px 10px;
+  }
+}
+
+/* ── voices: a row of posts ─────────────────────────────────────────────── */
+
+.lt-voices .lt-in {
+  width: 100%;
+}
+/* a window on the row: the posts travel through it and fade out at both ends */
+.lt-posts {
+  --n: 3;
+  --gap: 18px;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+  mask-image: linear-gradient(to right, transparent, #000 5%, #000 88%, transparent);
+}
+.lt-posts:active {
+  cursor: grabbing;
+}
+.lt-posts ul {
+  display: flex;
+  gap: var(--gap);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  will-change: transform;
+}
+/* a little more than three of them fit, so there is always one arriving and one leaving */
+.lt-posts li {
+  flex: none;
+  width: calc((100% - var(--n) * var(--gap)) / (var(--n) + 0.36));
+}
+@media (max-width: 1099px) {
+  .lt-posts {
+    --n: 2;
+  }
+}
+.lt-post {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 22px 24px 20px;
+  border-radius: 14px;
+  background: rgba(10, 10, 12, 0.55);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  user-select: none;
+  transition: box-shadow 300ms;
+}
+.lt-post:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent);
+}
+.lt-film .lt-post .lt-on {
+  width: 15px;
+  height: 15px;
+  fill: var(--faint);
+  stroke: none;
+}
+.lt-film .lt-post .lt-on-nostr {
+  width: 20px;
+  height: 20px;
+  margin: -3px -2px -2px;
+}
+.lt-post blockquote {
+  margin: 18px 0 26px;
+  color: var(--ink);
+  font-size: 16.5px;
+  line-height: 1.42;
+  letter-spacing: -0.012em;
+  white-space: pre-line;
+}
+/* a few words can be said loud */
+.lt-post blockquote[data-loud] {
+  font-size: clamp(1.55rem, 2.1vw, 1.9rem);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+}
+.lt-post footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-top: auto;
+  font-size: 14px;
+}
+.lt-post footer img {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--hair);
+}
+.lt-post footer b {
+  color: var(--ink);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.lt-post footer span {
+  overflow: hidden;
+  color: var(--dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lt-film .lt-post footer svg {
+  align-self: center;
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  color: var(--faint);
+  rotate: -45deg;
+  transition: color 300ms;
+}
+.lt-film .lt-post:hover footer svg {
+  color: var(--gold);
+}
+/* one small line for each post, only where the row is swiped by hand */
+.lt-ticks {
+  display: none;
+  gap: 8px;
+  margin-top: clamp(12px, 2vh, 20px);
+}
+.lt-ticks button {
+  display: grid;
+  align-items: center;
+  width: 30px;
+  height: 24px;
+}
+.lt-ticks i {
+  height: 1px;
+  background: var(--faint);
+  transition: background-color 500ms, height 500ms;
+}
+.lt-ticks button:hover i {
+  background: var(--ink);
+}
+.lt-ticks button[aria-current] i {
+  height: 2px;
+  background: var(--gold);
+}
+
+/* ── the end ────────────────────────────────────────────────────────────── */
+
+.lt-repos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.lt-repos a {
+  display: block;
+  padding: 9px 16px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--dim);
+  transition: color 240ms, box-shadow 240ms;
+}
+.lt-repos a:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+/* the mark stands in light above; its name and the way in sit under it */
+.lt-end {
+  justify-content: flex-end;
+  min-height: 100svh;
+  padding-bottom: 13svh !important;
+}
+.lt .lt-word {
+  font-size: clamp(3.4rem, 8.6vw, 8.4rem);
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+}
+.lt-end .lt-cta {
+  justify-content: center;
+}
+/* narrow: the light stands above, the words below it */
+@media (max-width: 760px), (max-aspect-ratio: 1/1) {
+  .lt-part {
+    justify-content: flex-end;
+    min-height: 108svh;
+    padding-bottom: 12svh;
+  }
+  .lt-part[data-side="right"] {
+    align-items: stretch;
+  }
+  .lt-hero {
+    min-height: 100svh;
+    padding-bottom: 7svh;
+  }
+  .lt-facts {
+    margin-top: 34px;
+    gap: 6px 14px;
+  }
+  .lt-facts li + li::before {
+    margin-right: 14px;
+  }
+  .lt-build {
+    justify-content: flex-start;
+    padding-top: 46svh;
+  }
+  /* the horizon lies along the foot of the screen: the words stand above it */
+  .lt-open {
+    padding-bottom: 42svh;
+  }
+  .lt-end {
+    padding-bottom: 17svh !important;
+  }
+  /* one post at a time, edge to edge, swiped by hand, with the next one showing */
+  .lt-posts {
+    --n: 1;
+    margin: 0 calc(var(--pad) * -1);
+    padding: 0 var(--pad);
+    overflow-x: auto;
+    scroll-padding-left: var(--pad);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: auto;
+    mask-image: none;
+  }
+  .lt-posts::-webkit-scrollbar {
+    display: none;
+  }
+  .lt-posts ul {
+    width: max-content;
+  }
+  .lt-posts li {
+    width: calc(100vw - var(--pad) * 2 - 34px);
+    scroll-snap-align: start;
+  }
+  .lt-posts li[data-twin] {
+    display: none;
+  }
+  .lt-ticks {
+    display: flex;
+  }
+  .lt-rows > div,
+  .lt-tools a {
+    grid-template-columns: 1fr auto;
+    gap: 2px 14px;
+  }
+  .lt-rows dd,
+  .lt-tools span {
+    grid-column: 1;
+  }
+  .lt-tools svg {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt .ln > span,
+  .lt-voice,
+  .lt-label,
+  .lt-lede,
+  .lt-cta,
+  .lt-link,
+  .lt-facts,
+  .lt-code,
+  .lt-tools,
+  .lt-rows,
+  .lt-repos {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
