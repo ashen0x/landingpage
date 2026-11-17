@@ -1,0 +1,379 @@
+/* The Prices page: the board of nodes, and beside it the list of models. It is set with the
+   page kit (components/layout/pages.css) and adds only what that kit does not have. */
+
+.pr-sides {
+  margin-top: clamp(30px, 5.6vh, 60px);
+  animation: pg-in 1000ms ease 480ms both;
+}
+
+/* ── the board: one line per node, the one first on the most models at the top ── */
+
+.pr-cap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 46px;
+  padding: 0 4px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.pr-cap small {
+  margin-left: 8px;
+  font-size: inherit;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  opacity: 0.8;
+}
+.pr-nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  column-gap: 28px;
+}
+.pr-node {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 14px;
+  align-items: baseline;
+  width: 100%;
+  padding: 14px 4px 13px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  text-align: left;
+  transition: background-color 300ms, padding 500ms var(--out);
+}
+.pr-node:hover {
+  padding-left: 14px;
+  background: color-mix(in srgb, var(--foreground) 3.5%, transparent);
+}
+.pr-node[aria-pressed="true"] {
+  padding-left: 14px;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  box-shadow: inset 2px 0 0 var(--gold), inset 0 -1px 0 var(--hair);
+}
+.pr-node b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pr-node em {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+.pr-node small {
+  grid-column: 1 / -1;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+.pr-bar {
+  grid-column: 1 / -1;
+  height: 2px;
+  margin-top: 4px;
+  background: var(--hair);
+}
+.pr-bar i {
+  display: block;
+  height: 100%;
+  background: var(--dim);
+}
+/* the node that wins the most routes */
+.pr-node[data-lead] em {
+  color: var(--gold);
+}
+.pr-node[data-lead] .pr-bar i {
+  background: var(--gold);
+}
+/* a node apps do not use: a quieter, shorter line */
+.pr-node[data-off] {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.pr-node[data-off] b {
+  color: var(--dim);
+  font-size: 14.5px;
+  font-weight: 400;
+}
+.pr-node[data-off] small {
+  grid-column: auto;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.pr-fold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 4px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  color: var(--faint);
+  font-size: 13px;
+  text-align: left;
+  transition: color 200ms;
+}
+.pr-fold:hover {
+  color: var(--ink);
+}
+.pr-fold svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  transition: rotate 300ms var(--out);
+}
+.pr-fold[aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+.pr-why {
+  margin: 0;
+  padding: 12px 4px 4px;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+.pr-phone {
+  display: none;
+}
+/* lines of the board still on their way */
+.pr-wait {
+  height: 78px;
+  pointer-events: none;
+}
+.pr-wait::before {
+  content: "";
+  align-self: center;
+  width: 55%;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--hair);
+  animation: pg-breathe 1600ms ease-in-out infinite;
+  animation-delay: calc(var(--i) * 90ms);
+}
+
+/* ── the list: every model, or the picked node's ───────────────────────────── */
+
+.pr-list {
+  /* a model, how much it is asked for, who is cheapest, the price, the nodes, and OpenRouter */
+  --pr: minmax(0, 1fr) 6.2rem minmax(0, 9.5rem) 7.2rem 3.6rem 6.8rem;
+  /* brought into sight by a pick on the board, it stops clear of the bar at the top */
+  scroll-margin-top: 88px;
+  margin-top: clamp(36px, 6vh, 56px);
+}
+.pr-list[data-picked] {
+  /* a model, how much it is asked for, this node's price, its place, the cut, the nodes, and OpenRouter */
+  --pr: minmax(0, 1fr) 6.2rem 5.4rem 5.4rem 3.6rem 3.6rem 6.8rem;
+}
+.pr-list :is(.pg-cols, .pg-row) {
+  grid-template-columns: var(--pr) !important;
+}
+.pr-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+.pr-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.4rem, 1.9vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+}
+.pr-head p {
+  margin: 0;
+}
+/* how many models the search or a chip leaves: at the far end, where it moves nothing */
+.pr-head .pg-count {
+  margin-left: auto;
+}
+.pr-tools {
+  margin-top: 16px;
+  animation: none;
+}
+.pr-tools .pg-search {
+  flex: 1 1 16rem;
+  max-width: 24rem;
+  height: 46px;
+}
+.pr-list .pg-list {
+  margin-top: 16px;
+  animation: none;
+}
+.pr-list .pg-cols > * {
+  white-space: nowrap;
+}
+.pr-list .pg-row {
+  width: 100%;
+  min-height: 60px;
+  text-align: left;
+}
+.pr-list .pg-name b.pr-id {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+/* a model opened: every node that sells it, in the order apps try them */
+.pr-open {
+  margin: 0;
+  padding: 6px 4px 10px 52px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  background: color-mix(in srgb, var(--foreground) 2.5%, transparent);
+  list-style: none;
+}
+.pr-open li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 5.4rem 4.6rem;
+  gap: 0 16px;
+  align-items: center;
+  height: 36px;
+  color: var(--dim);
+  font-size: 14px;
+}
+.pr-open span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pr-open span:not(:nth-child(2)) {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.pr-open span:first-child {
+  color: var(--faint);
+  text-align: left;
+}
+.pr-open li[data-first] span {
+  color: var(--gold);
+}
+.pr-open li[data-mine] span:nth-child(2) {
+  color: var(--ink);
+  font-weight: 500;
+}
+.pr-open li[data-mine][data-first] span:nth-child(2) {
+  color: var(--gold);
+}
+.pr-open li[data-off] span {
+  color: var(--faint);
+}
+.pr-open i {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── two sides where there is room: the board stays in sight beside the list ── */
+
+@media (min-width: 1360px) {
+  .pr-sides {
+    display: grid;
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+    gap: clamp(28px, 4vw, 64px);
+    align-items: start;
+  }
+  .pr-board {
+    position: sticky;
+    top: 92px;
+    max-height: calc(100svh - 112px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  /* the names of the board's columns stay while its nodes scroll under them */
+  .pr-cap {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--background);
+  }
+  .pr-nodes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pr-list {
+    margin-top: 0;
+  }
+  .pr-list .pg-cols {
+    margin: 0;
+    padding: 0 4px;
+  }
+}
+/* the figure against OpenRouter goes first where the list is tight */
+@media (min-width: 1360px) and (max-width: 1499px), (max-width: 1099px) {
+  .pr-list {
+    --pr: minmax(0, 1fr) 6.2rem minmax(0, 9.5rem) 7.2rem 3.6rem;
+  }
+  .pr-list[data-picked] {
+    --pr: minmax(0, 1fr) 6.2rem 5.4rem 5.4rem 3.6rem 3.6rem;
+  }
+  .pr-list :is(.pg-cols, .pg-row) .pr-vs {
+    display: none;
+  }
+}
+/* then how much a model is asked for */
+@media (max-width: 999px) {
+  .pr-list {
+    --pr: minmax(0, 1fr) minmax(0, 8rem) 7.2rem 3.6rem;
+  }
+  .pr-list[data-picked] {
+    --pr: minmax(0, 1fr) 5.4rem 5.4rem 3.6rem 3.6rem;
+  }
+  .pr-asked {
+    display: none;
+  }
+}
+/* on a phone: the model, the price, and the nodes or this node's place */
+@media (max-width: 760px) {
+  /* the nodes are a number here, not a lane */
+  .pr-list {
+    --pr: minmax(0, 1fr) 4.2rem 2.8rem;
+  }
+  .pr-list[data-picked] {
+    --pr: minmax(0, 1fr) 4.2rem 3.4rem;
+  }
+  .pr-winner,
+  .pr-cut,
+  .pr-wide,
+  .pr-list[data-picked] .pr-nodes-col {
+    display: none;
+  }
+  .pr-phone {
+    display: flex;
+  }
+  .pr-board:not([data-whole]) .pr-in-use > :nth-child(n + 6):not([aria-pressed="true"]) {
+    display: none;
+  }
+  .pr-list .pg-row {
+    min-height: 58px;
+  }
+  .pr-list .pg-name b.pr-id {
+    font-size: 13px;
+  }
+  .pr-open {
+    padding-left: 4px;
+  }
+  .pr-open li {
+    grid-template-columns: 1.6rem minmax(0, 1fr) 4.6rem 4.2rem;
+    gap: 0 10px;
+  }
+  .pr-open .pr-vs {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-sides {
+    animation: none;
+  }
+}
