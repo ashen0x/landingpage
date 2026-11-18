@@ -9,6 +9,8 @@ interface SiteShellProps {
   className?: string;
   contentClassName?: string;
   useMain?: boolean;
+  /** The strip of light across the top; off on a page that draws its own light. */
+  band?: boolean;
 }
 
 export function SiteShell({
@@ -16,6 +18,7 @@ export function SiteShell({
   className,
   contentClassName,
   useMain = true,
+  band = true,
 }: SiteShellProps) {
   return (
     <div
@@ -24,7 +27,7 @@ export function SiteShell({
         className
       )}
     >
-      <Band />
+      {band && <Band />}
       <Header />
       {useMain ? (
         <main className={cn("relative z-[1] flex-grow pt-[72px] sm:pt-[80px]", contentClassName)}>{children}</main>

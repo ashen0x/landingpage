@@ -6,26 +6,13 @@ import { ArrowRight } from "lucide-react";
 import { RoutstrMark } from "@/components/RoutstrMark";
 import { ModelCompanyIcon } from "@/components/stats/model-company-icon";
 import { formatSats, prettyModel } from "@/lib/home/format";
+import { approvedCount, pickFeatured } from "@/lib/home/featured";
 import type { Market } from "@/lib/home/use-market";
-import type { RadarRow } from "@/lib/price-radar";
 
-// One model per family, the one most nodes sell.
-const FAMILIES = [/claude-(opus|fable|sonnet)/, /^gpt-\d/, /deepseek/, /gemini/, /kimi/, /glm/];
 const MAX_ROWS = 5;
 const ROW = 46;
 const GAP = 6;
 const CYCLE_MS = 4600;
-
-const approvedCount = (row: RadarRow) => row.entries.filter((entry) => entry.approved).length;
-
-function pickFeatured(rows: readonly RadarRow[]): RadarRow[] {
-  return FAMILIES.flatMap((family) => {
-    const best = rows
-      .filter((row) => family.test(row.modelId) && !row.modelId.includes("/"))
-      .sort((a, b) => approvedCount(b) - approvedCount(a) || b.modelId.localeCompare(a.modelId))[0];
-    return best && approvedCount(best) > 1 ? [best] : [];
-  });
-}
 
 export function LiveRoute({ market }: { market: Market }) {
   const featured = useMemo(() => pickFeatured(market.rows), [market.rows]);

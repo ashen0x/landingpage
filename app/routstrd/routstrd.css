@@ -1,0 +1,748 @@
+/* The routstrd page. A short head; the light across the whole width (your agents, routstrd,
+   the nodes that sell a model) with what it is doing in words under it; then the guide, two
+   columns on a wide screen: words on the left, the thing itself on the right. */
+
+/* ── the head ───────────────────────────────────────────────────────────── */
+
+.rd.pg {
+  padding-top: clamp(28px, 5vh, 56px);
+}
+.rd-head {
+  display: grid;
+  gap: 0 48px;
+}
+@media (min-width: 1100px) {
+  .rd-head {
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(30rem, 42%));
+    align-items: end;
+  }
+  .rd-intro .pg-lede {
+    margin-top: 0;
+  }
+}
+.rd-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  margin-top: clamp(22px, 3.4vh, 34px);
+  animation: pg-in 1000ms ease 480ms both;
+}
+.rd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 54px;
+  padding: 0 8px 0 26px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--background);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: gap 500ms var(--out);
+}
+.rd-btn svg {
+  box-sizing: content-box;
+  width: 16px;
+  height: 16px;
+  padding: 11px;
+  border-radius: 50%;
+  background: var(--background);
+  color: var(--ink);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  transition: transform 500ms var(--out);
+}
+.rd-btn:hover svg {
+  transform: translateX(3px);
+}
+.rd-link,
+.rd-end a,
+.rd-foot a {
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: 0 1px 0 var(--hair);
+  transition: box-shadow 300ms;
+}
+.rd-link:hover,
+.rd-end a:hover,
+.rd-foot a:hover {
+  box-shadow: 0 1px 0 var(--ink);
+}
+.rd-link {
+  padding: 4px 0;
+  font-size: 16px;
+}
+.rd-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: clamp(22px, 3.4vh, 34px) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  animation: pg-in 1000ms ease 560ms both;
+}
+
+/* ── the light ──────────────────────────────────────────────────────────── */
+
+.rd-stage {
+  position: relative;
+  height: clamp(440px, 64vh, 680px);
+  margin: clamp(4px, 1.4vh, 16px) calc(var(--pad) * -1) 0;
+  overflow: hidden;
+  /* what the light is drawn on by day: the canvas multiplies onto it */
+  background: var(--background);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.rd-stage[data-point] {
+  cursor: pointer;
+}
+.rd-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 9%, #000 91%, transparent);
+  /* light added to the page, so its black is the page's own */
+  mix-blend-mode: screen;
+}
+/* by day the light is drawn as ink on paper, as the strip on the other pages is */
+:root:not(.dark) .rd-stage canvas {
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: multiply;
+}
+.rd-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* a name beside the end of a line; the light moves it there every frame */
+.rd-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  text-shadow: 0 0 6px var(--background), 0 0 14px var(--background);
+  opacity: 0;
+  transition: opacity 420ms ease, color 300ms ease;
+  will-change: transform;
+}
+.rd-tag[data-on] {
+  opacity: 1;
+}
+.rd-tag small {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.rd-node {
+  translate: 14px -50%;
+  margin: -6px -8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.rd-node:not([data-on]) {
+  pointer-events: none;
+}
+/* a node shows its price, and its name only while you point at it: the page puts no node forward */
+.rd-node span {
+  display: none;
+  max-width: 13rem;
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+}
+.rd-node:hover span,
+.rd-node[data-hot] span {
+  display: block;
+}
+.rd-stage:not([data-portrait]) .rd-node small::after {
+  content: " sats";
+}
+.rd-node[data-lead] small {
+  color: var(--gold);
+}
+.rd-node[data-rest] small {
+  text-decoration: line-through;
+  text-decoration-color: var(--hair);
+}
+.rd-agent {
+  translate: calc(-100% - 14px) -50%;
+  font-size: 12.5px;
+}
+.rd-eye {
+  translate: -50% calc(-100% - 30px);
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+.rd-eye small {
+  font-size: 11px;
+  font-weight: 400;
+}
+/* on a phone the light runs down the screen: names above the agents, prices under the nodes */
+.rd-stage[data-portrait] .rd-node {
+  translate: -50% 12px;
+}
+.rd-stage[data-portrait] .rd-node span {
+  display: none;
+}
+.rd-stage[data-portrait] .rd-node small {
+  font-size: 10.5px;
+}
+.rd-stage[data-portrait] .rd-agent {
+  translate: -50% calc(-100% - 12px);
+  font-size: 11px;
+}
+.rd-stage[data-portrait] .rd-eye {
+  translate: 22px -50%;
+  align-items: flex-start;
+}
+.rd-nogl {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  color: var(--faint);
+  text-align: center;
+}
+
+/* ── under the light: what it is doing, in words ────────────────────────── */
+
+.rd-deck {
+  display: grid;
+  gap: 22px;
+  padding-top: 6px;
+}
+/* as tall as the longest thing it says, so the buttons under it never move */
+.rd-term {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 3.2rem;
+  max-width: 46rem;
+}
+.rd-term code {
+  display: block;
+  min-width: 0;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.rd-ps {
+  margin-right: 0.6ch;
+  color: var(--faint);
+}
+.rd-caret {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.16em;
+  background: var(--gold);
+  animation: rd-blink 1s steps(1) infinite;
+}
+@keyframes rd-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.rd-term p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.rd-term p b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.rd-term p i {
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 0.92em;
+  font-style: normal;
+}
+.rd-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.rd-models button {
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.rd-models button[aria-checked="true"] {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--background);
+}
+.rd-cut {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent);
+  color: var(--ink);
+  font-size: 13.5px;
+  transition: box-shadow 260ms;
+}
+.rd-cut:hover {
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.rd-cut:disabled {
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--faint);
+  opacity: 0.45;
+  cursor: default;
+}
+/* the order, as a list to tap: on a phone, or where the light cannot be drawn */
+.rd-order {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  box-shadow: inset 0 1px 0 var(--hair);
+}
+.rd-order[data-all] {
+  display: block;
+}
+.rd-order li {
+  box-shadow: inset 0 -1px 0 var(--hair);
+}
+.rd-order button {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 0;
+  font-size: 14.5px;
+  text-align: left;
+}
+.rd-order button:disabled {
+  cursor: default;
+}
+.rd-order i {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-style: normal;
+}
+.rd-order b {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rd-order span {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.rd-order [data-lead] span {
+  color: var(--gold);
+}
+.rd-order [data-rest] b {
+  color: var(--faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--hair);
+}
+.rd-order [data-rest] span::after {
+  content: " · resting";
+}
+.rd-foot {
+  max-width: 46rem;
+  margin: 0;
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+/* how it picks: the light's key, four steps across under it, or down on a narrow screen */
+.rd-how {
+  margin-top: clamp(48px, 8vh, 88px);
+}
+.rd-steps {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  box-shadow: inset 0 1px 0 var(--hair);
+}
+.rd-steps li {
+  display: grid;
+  grid-template-columns: 7.2rem minmax(0, 1fr);
+  gap: 16px;
+  padding: 15px 0;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+.rd-steps b {
+  color: var(--ink);
+  font-weight: 500;
+}
+@media (min-width: 900px) {
+  .rd-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(20px, 3vw, 44px);
+    box-shadow: none;
+  }
+  .rd-steps li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 16px 0 0;
+    box-shadow: inset 0 1px 0 var(--hair);
+  }
+}
+
+/* ── the guide ──────────────────────────────────────────────────────────── */
+
+.rd-part {
+  display: grid;
+  align-items: start;
+  gap: clamp(28px, 4vw, 72px);
+  margin-top: clamp(96px, 16vh, 170px);
+  /* brought into sight by "Install it", it stops clear of the bar at the top */
+  scroll-margin-top: 110px;
+}
+.rd-part > * {
+  min-width: 0;
+}
+@media (min-width: 1100px) {
+  .rd-part {
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+  .rd-watch {
+    grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr);
+  }
+}
+.rd-part h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 3.6vw, 3.4rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+.rd-part .pg-lede {
+  max-width: 30rem;
+  animation: none;
+}
+.rd-part code,
+.rd-under code {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.88em;
+}
+.rd-more {
+  display: inline-block;
+  margin-top: clamp(20px, 3vh, 30px);
+}
+/* a panel of commands, or a terminal */
+.rd-code {
+  overflow: hidden;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair), 0 40px 80px -40px rgb(0 0 0 / 0.5);
+}
+.rd-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px 0 6px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+  font-size: 13.5px;
+}
+/* tabs that do not fit run on under the edge; the fade, over a gap of its own, says there are more */
+.rd-bar [role="tablist"] {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  padding-right: 24px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+.rd-bar [role="tablist"]::-webkit-scrollbar {
+  display: none;
+}
+.rd-bar button {
+  position: relative;
+  flex: none;
+  height: 100%;
+  padding: 0 13px;
+  color: var(--faint);
+  white-space: nowrap;
+  transition: color 200ms;
+}
+.rd-bar [role="tab"]::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  bottom: 0;
+  left: 13px;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transition: transform 420ms var(--out);
+}
+.rd-bar button:hover,
+.rd-bar [aria-selected="true"] {
+  color: var(--ink);
+}
+.rd-bar [aria-selected="true"]::after {
+  transform: scaleX(1);
+}
+.rd-bar :focus-visible {
+  outline-offset: -6px;
+}
+.rd-copy {
+  flex: none;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rd-bar .rd-copy {
+  padding: 0 8px;
+}
+.rd-code-body {
+  display: grid;
+}
+.rd-code pre {
+  grid-area: 1 / 1;
+  min-width: 0;
+  margin: 0;
+  padding: 18px 22px 20px;
+  overflow-x: auto;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.85;
+  scrollbar-width: none;
+}
+.rd-code-body pre {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 160ms, visibility 0s 160ms;
+}
+.rd-code-body pre[data-on] {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 160ms;
+}
+.rd-code pre i {
+  color: var(--gold);
+  font-style: normal;
+}
+.rd-code pre em {
+  color: var(--faint);
+  font-style: normal;
+}
+.rd-under {
+  margin: 14px 2px 0;
+  color: var(--faint);
+  font-size: 13.5px;
+}
+
+/* routstrd top: 100 columns set to fill the window, or on a narrow one run on under the edge */
+.rd-top [role="tab"] i {
+  margin-right: 6px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-style: normal;
+}
+.rd-screen {
+  container-type: inline-size;
+  padding: 16px 18px 18px;
+}
+.rd-screen:focus-visible {
+  outline-offset: -4px;
+}
+.rd-screen pre {
+  height: calc(var(--rows) * 1.2em);
+  padding: 0;
+  overflow: auto hidden;
+  color: var(--dim);
+  font-size: clamp(10.5px, 100cqw / 60, 13px);
+  line-height: 1.2;
+  white-space: pre;
+  scrollbar-width: none;
+}
+@container (max-width: 629px) {
+  .rd-screen pre {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+}
+.rd-screen .t-bd {
+  font-weight: 600;
+}
+.rd-screen .t-hi {
+  color: var(--ink);
+}
+.rd-screen .t-blk {
+  display: inline-block;
+  height: 0.95em;
+  vertical-align: -0.12em;
+  background: currentColor;
+}
+.rd-screen .t-dm {
+  color: var(--faint);
+}
+.rd-screen .t-c {
+  color: var(--code-blue);
+}
+.rd-screen .t-b {
+  color: var(--code-lightblue);
+}
+.rd-screen .t-w {
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+.rd-screen .t-o {
+  color: var(--gold);
+}
+.rd-screen .t-y {
+  color: var(--code-yellow);
+}
+.rd-screen .t-g {
+  color: var(--code-green);
+}
+.rd-screen .t-r {
+  color: var(--code-red);
+}
+.rd-screen .t-sel {
+  background: var(--ink);
+  color: var(--background);
+}
+.rd-screen .t-on {
+  background: var(--gold);
+  color: var(--background);
+}
+.rd {
+  --code-green: #2f7a46;
+  --code-red: #b4433b;
+}
+:root.dark .rd {
+  --code-green: #9ad5a6;
+  --code-red: #f19a8f;
+}
+
+/* ── the end ────────────────────────────────────────────────────────────── */
+
+.rd-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 22px 40px;
+  margin-top: clamp(96px, 16vh, 170px);
+  padding-top: 28px;
+  box-shadow: inset 0 1px 0 var(--hair);
+}
+.rd-end ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 30px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rd-end a {
+  padding: 4px 0;
+  font-size: 15px;
+}
+.rd-end p {
+  margin: 0;
+  font-size: 15px;
+}
+
+@media (max-width: 760px) {
+  .rd-stage {
+    height: clamp(520px, 80svh, 700px);
+  }
+  .rd-term {
+    min-height: 7rem;
+  }
+  .rd-order {
+    display: block;
+  }
+  .rd-models {
+    flex-wrap: nowrap;
+    max-width: calc(100% + 10px);
+    margin: -5px;
+    padding: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .rd-models button {
+    flex: none;
+  }
+  .rd-steps li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  /* long lines run on under the edge; the fade says there is more */
+  .rd-code-body pre {
+    padding: 16px 16px 18px;
+    font-size: 12px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+  .rd-screen {
+    padding: 14px 12px 16px;
+  }
+}
+/* the smallest phones fold the command and the words onto more lines */
+@media (max-width: 335px) {
+  .rd-term {
+    min-height: 9.6rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-caret {
+    animation: none;
+  }
+}

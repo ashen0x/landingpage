@@ -1,26 +1,23 @@
 import type { Metadata } from "next";
 
+const description =
+  "A small program that gives your coding agents every model. It finds Routstr nodes on Nostr, pays them in sats from its own wallet, and sends each request to the cheapest one that works.";
+
 export const metadata: Metadata = {
-  title: "Routstrd - Uncensorable AI Access via Nostr & Bitcoin",
-  description:
-    "Routstrd is the only tool you need for uncensorable access to AI. Powered by Nostr and Bitcoin — no KYC, no credit cards, no permissions.",
+  // the root layout adds " | Routstr"
+  title: "routstrd",
+  description,
   openGraph: {
-    title: "Routstrd - Uncensorable AI Access via Nostr & Bitcoin",
-    description:
-      "The only tool you need for uncensorable access to AI. Powered by Nostr and Bitcoin.",
+    title: "routstrd - Routstr",
+    description,
     url: "https://routstr.com/routstrd",
   },
   twitter: {
-    title: "Routstrd - Uncensorable AI Access via Nostr & Bitcoin",
-    description:
-      "The only tool you need for uncensorable access to AI. Powered by Nostr and Bitcoin.",
+    title: "routstrd - Routstr",
+    description,
   },
 };
 
-export default function RoutstrdLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RoutstrdLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }

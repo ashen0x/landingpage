@@ -5,10 +5,11 @@
    object can flow from one shape into the next as the page scrolls. Gold
    pulses travel along the fibres: sats on their way.
 
-   Pipeline: fibres -> half-float scene -> two blurred copies -> one composite
-   pass that adds the glow, a little lens fringe, tone-maps, and lays grain. */
+   Pipeline: fibres -> half-float scene -> the glow (kit.ts): two blurred copies
+   -> one composite pass that adds the glow, a little lens fringe, tone-maps, and lays grain. */
 
 import { ROUTSTR_MARK_PATH, ROUTSTR_MARK_VIEWBOX_MIN, ROUTSTR_MARK_VIEWBOX_SIZE } from "@/lib/brand";
+import { CAMERA, FOV, Glow, clamp, ease, multiply, perspective, program, rotate, scale, software, translate, type Program } from "./kit";
 
 export type Pose = {
   form: number;
@@ -281,103 +282,6 @@ void main() {
   o = vec4(col * edge * fog * v_ends * v_soft * cut * u_gain, 1.0);
 }`;
 
-const QUAD_VERT = `#version 300 es
-layout(location=0) in vec2 a_pos;
-out vec2 v_uv;
-void main() {
-  v_uv = a_pos * 0.5 + 0.5;
-  gl_Position = vec4(a_pos, 0.0, 1.0);
-}`;
-
-const BLUR_FRAG = `#version 300 es
-precision highp float;
-in vec2 v_uv;
-uniform sampler2D u_tex;
-uniform vec2 u_step;
-out vec4 o;
-void main() {
-  vec3 c = texture(u_tex, v_uv).rgb * 0.227027;
-  c += (texture(u_tex, v_uv + u_step * 1.3846).rgb + texture(u_tex, v_uv - u_step * 1.3846).rgb) * 0.316216;
-  c += (texture(u_tex, v_uv + u_step * 3.2308).rgb + texture(u_tex, v_uv - u_step * 3.2308).rgb) * 0.070270;
-  o = vec4(c, 1.0);
-}`;
-
-const FINAL_FRAG = `#version 300 es
-precision highp float;
-in vec2 v_uv;
-uniform sampler2D u_scene, u_glow, u_haze;
-uniform float u_time, u_aspect;
-out vec4 o;
-float hash(vec2 p) {
-  p = fract(p * vec2(123.34, 345.45));
-  p += dot(p, p + 34.345);
-  return fract(p.x * p.y);
-}
-void main() {
-  // a lens: colours part a hair toward the edges of the frame
-  vec2 out2 = (v_uv - 0.5) * dot(v_uv - 0.5, v_uv - 0.5) * 0.014;
-  vec3 sharp = vec3(texture(u_scene, v_uv + out2).r, texture(u_scene, v_uv).g, texture(u_scene, v_uv - out2).b);
-  vec3 c = sharp + texture(u_glow, v_uv).rgb * 0.55 + texture(u_haze, v_uv).rgb * 0.5;
-  c = 1.0 - exp(-c * 1.35);
-  float centre = smoothstep(1.2, 0.2, length((v_uv - 0.5) * vec2(u_aspect, 1.0)));
-  c = c * mix(0.7, 1.0, centre) + vec3(0.010, 0.011, 0.016) * centre;
-  c += (hash(gl_FragCoord.xy + fract(u_time) * 61.0) - 0.5) * 0.028;
-  o = vec4(c, 1.0);
-}`;
-
-type Target = { fbo: WebGLFramebuffer; tex: WebGLTexture; w: number; h: number };
-type Program = { p: WebGLProgram; u: Record<string, WebGLUniformLocation | null> };
-
-/* ── small matrix kit, column-major ─────────────────────────────────────── */
-type Mat = Float32Array;
-const identity = (): Mat => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-function multiply(a: Mat, b: Mat): Mat {
-  const m = new Float32Array(16);
-  for (let c = 0; c < 4; c++) {
-    for (let r = 0; r < 4; r++) {
-      m[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
-    }
-  }
-  return m;
-}
-function perspective(fov: number, aspect: number, near: number, far: number): Mat {
-  const f = 1 / Math.tan(fov / 2);
-  const m = new Float32Array(16);
-  m[0] = f / aspect;
-  m[5] = f;
-  m[10] = (far + near) / (near - far);
-  m[11] = -1;
-  m[14] = (2 * far * near) / (near - far);
-  return m;
-}
-function translate(x: number, y: number, z: number): Mat {
-  const m = identity();
-  m[12] = x;
-  m[13] = y;
-  m[14] = z;
-  return m;
-}
-function rotate(axis: 0 | 1 | 2, angle: number): Mat {
-  const m = identity();
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  const [a, b] = axis === 0 ? [1, 2] : axis === 1 ? [2, 0] : [0, 1];
-  m[a * 4 + a] = c;
-  m[b * 4 + b] = c;
-  m[a * 4 + b] = s;
-  m[b * 4 + a] = -s;
-  return m;
-}
-function scale(k: number): Mat {
-  const m = identity();
-  m[0] = m[5] = m[10] = k;
-  return m;
-}
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-const ease = (t: number) => t * t * (3 - 2 * t);
-
-const CAMERA = 6;
-const FOV = 0.6;
 /** How long the opening takes: one cable crosses the page, then opens. */
 const OPENING = 2.6;
 const BASE_COUNT = 560;
@@ -403,14 +307,12 @@ function markMask(): HTMLCanvasElement {
 
 export class Fibres {
   private gl: WebGL2RenderingContext | null;
-  private programs: Record<string, Program> = {};
+  private fibre: Program | null = null;
+  private glow: Glow | null = null;
   private fibreVao: WebGLVertexArrayObject | null = null;
-  private quadVao: WebGLVertexArrayObject | null = null;
   private logo: WebGLTexture | null = null;
   private indexCount = 0;
   private count = BASE_COUNT;
-  private targets: Target[] = [];
-  private float = false;
   private frame = 0;
   private time = 0;
   private flow = 0;
@@ -452,19 +354,14 @@ export class Fibres {
     this.dead = !this.gl;
     if (!this.gl) return;
     const gl = this.gl;
-    this.float = !!gl.getExtension("EXT_color_buffer_float") || !!gl.getExtension("EXT_color_buffer_half_float");
     // without a graphics chip every frame would cost the page its scrolling
-    const info = gl.getExtension("WEBGL_debug_renderer_info");
-    this.frugal = /swiftshader|llvmpipe|software|basic render/i.test(
-      String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER))
-    );
+    this.frugal = software(gl);
     if (this.frugal) this.quality = 0.5;
-    this.programs.fibre = this.program(FIBRE_VERT, FIBRE_FRAG, [
+    this.fibre = program(gl, FIBRE_VERT, FIBRE_FRAG, [
       "u_time", "u_flow", "u_from", "u_to", "u_mix", "u_width", "u_chosen", "u_sparks", "u_rush", "u_blur", "u_pluck",
       "u_mvp", "u_res", "u_touch", "u_gain", "u_pulse", "u_mark", "u_ring", "u_calm", "u_logo",
     ]);
-    this.programs.blur = this.program(QUAD_VERT, BLUR_FRAG, ["u_tex", "u_step"]);
-    this.programs.final = this.program(QUAD_VERT, FINAL_FRAG, ["u_scene", "u_glow", "u_haze", "u_time", "u_aspect"]);
+    this.glow = new Glow(gl);
     // more fibres where the machine can clearly afford them
     const strong = (navigator.hardwareConcurrency ?? 4) >= 8 && window.innerWidth >= 1100;
     this.count = fibres ?? (window.innerWidth < 760 ? 260 : strong ? 760 : BASE_COUNT);
@@ -479,22 +376,6 @@ export class Fibres {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.resize();
-  }
-
-  private program(vert: string, frag: string, names: string[]): Program {
-    const gl = this.gl!;
-    const p = gl.createProgram()!;
-    for (const [type, source] of [[gl.VERTEX_SHADER, vert], [gl.FRAGMENT_SHADER, frag]] as const) {
-      const shader = gl.createShader(type)!;
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(shader));
-      gl.attachShader(p, shader);
-    }
-    gl.linkProgram(p);
-    const u: Program["u"] = {};
-    for (const name of names) u[name] = gl.getUniformLocation(p, name);
-    return { p, u };
   }
 
   /** One ribbon per fibre: two vertices at each step along it. */
@@ -531,57 +412,14 @@ export class Fibres {
     });
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, index, gl.STATIC_DRAW);
-
-    this.quadVao = gl.createVertexArray();
-    gl.bindVertexArray(this.quadVao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.bindVertexArray(null);
   }
 
-  private makeTarget(w: number, h: number): Target {
-    const gl = this.gl!;
-    const tex = gl.createTexture()!;
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    if (this.float) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
-    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    const fbo = gl.createFramebuffer()!;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-    return { fbo, tex, w, h };
-  }
-
   resize() {
-    if (!this.gl) return;
-    const gl = this.gl;
+    if (!this.glow) return;
     this.w = this.canvas.clientWidth;
     this.h = this.canvas.clientHeight;
-    // sharp on a laptop, but never more pixels than a 1440p screen
-    const ratio = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(3_700_000 / (this.w * this.h))) * this.quality;
-    const w = Math.max(2, Math.round(this.w * ratio));
-    const h = Math.max(2, Math.round(this.h * ratio));
-    this.canvas.width = w;
-    this.canvas.height = h;
-    for (const target of this.targets) {
-      gl.deleteFramebuffer(target.fbo);
-      gl.deleteTexture(target.tex);
-    }
-    const half = [Math.ceil(w / 2), Math.ceil(h / 2)];
-    const sixth = [Math.ceil(w / 6), Math.ceil(h / 6)];
-    // scene, then a tight glow (two passes) and a wide haze (two passes)
-    this.targets = [
-      this.makeTarget(w, h),
-      this.makeTarget(half[0], half[1]),
-      this.makeTarget(half[0], half[1]),
-      this.makeTarget(sixth[0], sixth[1]),
-      this.makeTarget(sixth[0], sixth[1]),
-    ];
+    this.glow.resize(this.w, this.h, this.quality);
     this.draw(0);
   }
 
@@ -636,18 +474,10 @@ export class Fibres {
     cancelAnimationFrame(this.frame);
   }
 
-  private blur(from: Target, to: Target, dx: number, dy: number) {
-    const gl = this.gl!;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, to.fbo);
-    gl.viewport(0, 0, to.w, to.h);
-    gl.bindTexture(gl.TEXTURE_2D, from.tex);
-    gl.uniform2f(this.programs.blur.u.u_step, dx / to.w, dy / to.h);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-  }
-
   private draw(dt: number, still = false) {
     const gl = this.gl;
-    if (!gl || !this.targets.length) return;
+    const scene = this.glow?.scene;
+    if (!gl || !this.glow || !this.fibre || !scene) return;
 
     // a machine that cannot keep up gets fewer pixels, not a slower page
     // (a page is busy while it loads, whatever the machine: the first seconds do not count)
@@ -702,7 +532,6 @@ export class Fibres {
     }
     const lerp = (key: keyof Pose) => a[key] + (b[key] - a[key]) * mix;
 
-    const [scene, glowA, glowB, hazeA, hazeB] = this.targets;
     const aspect = this.w / this.h;
     const model = [
       translate(lerp("x"), lerp("y"), 0),
@@ -715,7 +544,7 @@ export class Fibres {
     const mvp = multiply(translate(0, this.lifted * 2, 0), multiply(view, model));
 
     // 1. the fibres, added light on light
-    const fibre = this.programs.fibre;
+    const fibre = this.fibre;
     gl.bindFramebuffer(gl.FRAMEBUFFER, scene.fbo);
     gl.viewport(0, 0, scene.w, scene.h);
     gl.clearColor(0, 0, 0, 1);
@@ -753,32 +582,7 @@ export class Fibres {
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
     gl.disable(gl.BLEND);
 
-    // 2. glow and haze
-    gl.bindVertexArray(this.quadVao);
-    gl.useProgram(this.programs.blur.p);
-    gl.uniform1i(this.programs.blur.u.u_tex, 0);
-    this.blur(scene, glowA, 1, 0);
-    this.blur(glowA, glowB, 0, 1);
-    this.blur(glowB, hazeA, 1.6, 0);
-    this.blur(hazeA, hazeB, 0, 1.6);
-    this.blur(hazeB, hazeA, 1.6, 0);
-    this.blur(hazeA, hazeB, 0, 1.6);
-
-    // 3. everything together
-    const final = this.programs.final;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.useProgram(final.p);
-    [scene, glowB, hazeB].forEach((target, i) => {
-      gl.activeTexture(gl.TEXTURE0 + i);
-      gl.bindTexture(gl.TEXTURE_2D, target.tex);
-    });
-    gl.uniform1i(final.u.u_scene, 0);
-    gl.uniform1i(final.u.u_glow, 1);
-    gl.uniform1i(final.u.u_haze, 2);
-    gl.uniform1f(final.u.u_time, this.time);
-    gl.uniform1f(final.u.u_aspect, aspect);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.activeTexture(gl.TEXTURE0);
+    // 2. glow and haze, and everything together
+    this.glow.finish(this.time, aspect);
   }
 }

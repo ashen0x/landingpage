@@ -1,363 +1,212 @@
-"use client";
+import { SiteShell } from "@/components/layout/site-shell";
+import { CodePanel, type Example } from "@/components/routstrd/CodePanel";
+import { AGENTS, INSTALL_SH } from "@/components/routstrd/install";
+import { RouteStage } from "@/components/routstrd/RouteStage";
+import { Top } from "@/components/routstrd/Top";
+import "@/components/layout/pages.css";
+import "./routstrd.css";
 
-import { useRef, useState } from "react";
-import { PageContainer, SiteShell } from "@/components/layout/site-shell";
-import { Copy, Check, Search, Zap, Shield, ArrowRight, Terminal, Cpu, Network, ChevronDown, Users } from "lucide-react";
-import { toast, Toaster } from "sonner";
-import { Button } from "@/components/ui/button";
-import { useInView } from "@/hooks/use-in-view";
-import { cn } from "@/lib/utils";
-import { SectionConstellation } from "@/components/landing/SectionConstellation";
-import { BitcoinLogo } from "@/components/icons/BitcoinLogo";
-import { TuiShowcase, type TuiShowcaseHandle } from "@/components/landing/TuiShowcase";
+const GITHUB = "https://github.com/Routstr/routstrd";
+const AUTH = "https://github.com/Routstr/routstrd-auth";
 
-export default function RoutstrdPage() {
-  const [copiedBlock, setCopiedBlock] = useState<number | null>(null);
-  const [activeTuiTab, setActiveTuiTab] = useState(0);
-  const tuiRef = useRef<TuiShowcaseHandle>(null);
-  const teamsSectionRef = useRef<HTMLElement>(null);
-  const teamsInView = useInView(teamsSectionRef, 0.2);
-  const getStartedRef = useRef<HTMLElement>(null);
-  const getStartedInView = useInView(getStartedRef, 0.2);
+const installer: Example["lines"] = [
+  ["$", "curl -fsSL \\"],
+  ["", `    ${INSTALL_SH} | sh`],
+];
+const agents: Example[] = AGENTS.map(([tab, flag]) => ({
+  tab,
+  lines: [
+    ...installer,
+    ["$", `routstrd onboard ${flag}`, "makes a wallet, sets up your agent"],
+    ["$", "routstrd receive 2100", "a Lightning invoice for 2,100 sats"],
+  ],
+}));
 
-  const copyToClipboard = async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedBlock(index);
-      toast.success("Copied to clipboard!");
-      setTimeout(() => setCopiedBlock(null), 2000);
-    } catch {
-      toast.error("Failed to copy to clipboard");
-    }
-  };
+const team: Example[] = [
+  {
+    tab: "You, the admin",
+    lines: [
+      ["$", "routstrd remote https://ai.your-team.com"],
+      ["$", "routstrd npubs whoami", "your npub"],
+      ["$", "curl https://ai.your-team.com/npubs \\"],
+      ["", "    -H 'x-routstr-bootstrap-token: TOKEN' \\"],
+      ["", `    -d '{"npub": "npub1...", "name": "you"}'`, "makes you the admin; TOKEN is in the server log"],
+      ["$", "routstrd npubs add npub1... --name alice --limit-sats 50000", "50,000 sats a month"],
+    ],
+  },
+  {
+    tab: "A new member",
+    lines: [
+      ["$", "routstrd remote https://ai.your-team.com", "makes your own key"],
+      ["$", "routstrd npubs whoami", "send this to your admin"],
+      ["$", "routstrd clients add --claude-code", "once you are in"],
+    ],
+  },
+];
 
-  const steps = [
-    {
-      step: "01",
-      title: "Install",
-      command: "bun install -g routstrd",
-      description: "Get the daemon on your machine with a single command.",
-    },
-    {
-      step: "02",
-      title: "Onboard",
-      command: "routstrd onboard",
-      description: "Choose your favorite agent — Claude Code, OpenClaw, OpenCode, or Pi Agent. Quick installations included, integrate with any app.",
-    },
-    {
-      step: "03",
-      title: "Top Up & Go",
-      command: "routstrd receive 2100",
-      description: "Scan a Lightning invoice and start your agent. It's that simple.",
-    },
-  ];
-
-  const features = [
-    {
-      title: "Node Discovery",
-      desc: "Constantly searches Nostr for Routstr/AI nodes in the background. Always knows where the good nodes are.",
-      icon: Search,
-    },
-    {
-      title: "Auto-Routing",
-      desc: "Finds the cheapest available provider for the model you want. Falls back to the next best based on availability.",
-      icon: ChevronDown,
-    },
-    {
-      title: "Open Competition",
-      desc: "Routstr nodes compete on price, latency, and uptime. You always get the best deal without thinking about it.",
-      icon: Cpu,
-    },
-    {
-      title: "Zero Permissions",
-      desc: "No KYC, no credit cards, no sign-ups. Bitcoiners get the best price and the best experience.",
-      icon: Shield,
-    },
-  ];
-
+function Arrow() {
   return (
-    <SiteShell className="font-mono">
-      {/* Get Started in 3 Commands */}
-      <section ref={getStartedRef} className="relative flex min-h-[calc(100svh-72px)] flex-col justify-center overflow-hidden py-16 sm:min-h-[calc(100svh-80px)] md:py-20">
-        <SectionConstellation active={getStartedInView} />
-        <PageContainer className="relative">
-          <div className="mb-12 flex items-end justify-between gap-6">
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Routstr Daemon</p>
-              <h2 className="text-xl font-bold text-foreground">Get Started in 3 Commands</h2>
-            </div>
-            <Button asChild className="hidden md:inline-flex">
-              <a href="https://chat.routstr.com" target="_blank" rel="noopener noreferrer">
-                Or Just Get an API Key
-              </a>
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {steps.map((step, idx) => (
-              <div key={idx} className="flex flex-col border border-border bg-card p-5 transition-colors hover:border-foreground/20 hover:bg-muted/40 sm:p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="text-xs text-muted-foreground font-bold">{step.step}</span>
-                  <h3 className="text-lg font-bold text-foreground">{step.title}</h3>
-                </div>
-                <p className="mb-6 text-sm leading-relaxed text-muted-foreground sm:mb-8">{step.description}</p>
-                <div className="mb-8 mt-auto overflow-hidden border border-border bg-code-bg shadow-elevation">
-                  <div className="flex items-center justify-between border-b border-border px-4 py-2">
-                    <span className="text-[10px] text-muted-foreground">bash</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => copyToClipboard(step.command, idx)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      {copiedBlock === idx ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                    </Button>
-                  </div>
-                  <div className="p-4 font-mono text-[11px] text-muted-foreground">
-                    <div className="flex gap-2 break-all">
-                      <span className="text-green-500">$</span>
-                      <span>{step.command}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 flex justify-center md:hidden">
-            <Button asChild className="w-full">
-              <a href="https://chat.routstr.com" target="_blank" rel="noopener noreferrer">
-                Or Just Get an API Key
-              </a>
-            </Button>
-          </div>
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </section>
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M3 8h9.5M8.5 3.5 13 8l-4.5 4.5" />
+    </svg>
+  );
+}
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-16 md:flex md:min-h-[calc(100svh-80px)] md:flex-col md:justify-center md:py-20">
-        <PageContainer>
-          <div className="text-left mb-16">
-            <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-6 tracking-tight leading-tight">
-              The Only Tool you Need for Uncensorable Access to AI
-            </h1>
-            <p className="text-base md:text-lg text-muted-foreground max-w-2xl font-light leading-relaxed mb-10">
-              Routstrd is unlike any other inference provider — because it&apos;s <em>not</em> an inference provider. It&apos;s a tool, powered by Nostr and Bitcoin, that works for you.
-            </p>
-            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-2.5"><Network className="w-4.5 h-4.5 text-foreground" /> Nostr Network</span>
-              <span className="flex items-center gap-2.5"><Zap className="w-4.5 h-4.5 text-foreground" /> Lightning Payments</span>
-              <span className="flex items-center gap-2.5"><Shield className="w-4.5 h-4.5 text-foreground" /> No KYC</span>
-              <span className="flex items-center gap-2.5"><Terminal className="w-4.5 h-4.5 text-foreground" /> TUI Included</span>
-            </div>
-            <Button
-              type="button"
-              onClick={() => document.getElementById("teams")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="mt-8"
-            >
-              <Users className="h-3 w-3" aria-hidden="true" />
-              For teams? Click here for the hosted version
-              <ChevronDown className="h-3 w-3" aria-hidden="true" />
-            </Button>
-          </div>
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </section>
+function Steps({ steps }: { steps: [string, string][] }) {
+  return (
+    <ul className="rd-steps">
+      {steps.map(([name, text]) => (
+        <li key={name}>
+          <b>{name}</b>
+          <span>{text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
-      {/* TUI Showcase */}
-      <section className="relative py-20 md:flex md:min-h-[calc(100svh-80px)] md:flex-col md:justify-center">
-        <PageContainer>
-          <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2 md:gap-16">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6 tracking-tight">Real-time visibility.</h2>
-              <div className="space-y-6 text-muted-foreground font-light leading-relaxed">
-                <p><strong className="text-foreground font-bold">Routstrd</strong> comes with a beautiful Terminal User Interface that keeps you up to date on everything happening — which provider you&apos;re connected to, what models are available, and how your balance is doing.</p>
-                <p>I&apos;ve been using Routstrd for a month. It was easier to battle-test as its primary user. The competition between nodes is already heating up, which means you&apos;re getting the best price for your sats.</p>
-              </div>
-              <div className="flex gap-2 mt-8">
-                {[0, 1, 2].map((idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    aria-label={`Show TUI screen ${idx + 1}`}
-                    onClick={() => tuiRef.current?.goTo(idx)}
-                    className={cn(
-                      "h-1.5 w-8 rounded-full transition-colors",
-                      activeTuiTab === idx ? "bg-foreground" : "bg-border hover:bg-muted-foreground/30"
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-            <TuiShowcase ref={tuiRef} onActiveChange={setActiveTuiTab} />
-          </div>
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </section>
-
-      {/* Features */}
-      <section className="relative py-20 md:flex md:min-h-[calc(100svh-80px)] md:flex-col md:justify-center">
-        <PageContainer>
-          <h2 className="text-xl font-bold text-foreground mb-12">How it works</h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12">
-            {features.map((feature, i) => (
-              <div key={i} className="flex flex-col border border-border bg-card p-5 sm:p-8">
-                <div className="w-12 h-12 bg-muted border border-border flex items-center justify-center mb-6">
-                  <feature.icon className="w-6 h-6 text-foreground" />
-                </div>
-                <h3 className="text-lg font-bold text-foreground mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed font-light">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </section>
-
-      {/* Hosted for Teams */}
-      <section id="teams" ref={teamsSectionRef} className="relative overflow-hidden py-20 md:flex md:min-h-[calc(100svh-80px)] md:flex-col md:justify-center md:py-20">
-        <SectionConstellation active={teamsInView} />
-        <PageContainer className="relative">
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">For teams</p>
-          <h2 className="mb-12 text-xl font-bold text-foreground">Hosted for Teams</h2>
-          <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2 md:gap-12">
-            <div>
-              <p className="mb-8 font-light leading-relaxed text-muted-foreground">
-                <a href="https://github.com/routstr/routstrd-remote" target="_blank" rel="noopener noreferrer" className="text-foreground font-medium underline underline-offset-4 hover:text-amber-500 transition-colors">routstrd-remote</a> is a standalone auth proxy in front of the daemon — the public gatekeeper, while routstrd stays private on localhost.
-              </p>
-              <div className="space-y-4 text-base text-muted-foreground font-light">
-                <div className="flex items-start gap-3">
-                  <Shield className="w-4.5 h-4.5 text-foreground mt-0.5 shrink-0" />
-                  <span>Bearer-token auth (<span className="font-mono">sk-...</span>)</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Users className="w-4.5 h-4.5 text-foreground mt-0.5 shrink-0" />
-                  <span>Per-member Nostr keys with admin-managed access</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Terminal className="w-4.5 h-4.5 text-foreground mt-0.5 shrink-0" />
-                  <span>Usage tracking per member and client</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Cpu className="w-4.5 h-4.5 text-foreground mt-0.5 shrink-0" />
-                  <span>Deploy with vanilla Docker or Cloudron</span>
-                </div>
-              </div>
-              <Button asChild className="mt-8">
-                <a href="https://github.com/routstr/routstrd-remote" target="_blank" rel="noopener noreferrer">
-                  View on GitHub <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                </a>
-              </Button>
-            </div>
-            <div>
-              <h3 className="mb-4 text-base font-bold text-foreground">Connect your team members</h3>
-              <div className="border border-border bg-code-bg shadow-elevation overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-                  <span className="text-[10px] text-muted-foreground">bash</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => copyToClipboard("routstrd remote <your-instance>\nroutstrd npubs add <member-npub>", 100)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    {copiedBlock === 100 ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                  </Button>
-                </div>
-                <div className="space-y-1 p-4 font-mono text-[11px] text-muted-foreground">
-                  <div className="flex gap-2 break-all"><span className="text-green-500">$</span><span>{"routstrd remote <your-instance>"}</span></div>
-                  <div className="flex gap-2 break-all"><span className="text-green-500">$</span><span>{"routstrd npubs add <member-npub>"}</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </section>
-
-      {/* Testimonial/Personal Note */}
-      <section className="relative overflow-hidden bg-card/30 py-20 md:flex md:min-h-[calc(100svh-80px)] md:flex-col md:justify-center">
-        <PageContainer>
-          <div className="max-w-3xl">
-            <div className="relative overflow-hidden border border-border bg-card p-7 md:p-10">
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -top-7 left-5 select-none font-mono text-[7rem] leading-none text-foreground/[0.05]"
-              >
-                &ldquo;
+/* routstrd: what it is in one line, then the light (your agents, routstrd, the nodes that
+   sell a model, live) with how it picks a node under it, then how to install it, what you
+   see of it in the terminal, and how a team shares one. */
+export default function RoutstrdPage() {
+  return (
+    <SiteShell band={false}>
+      <section className="pg rd">
+        <header className="rd-head">
+          <div>
+            <p className="pg-label">routstrd</p>
+            <h1 className="pg-title">
+              <span>
+                <i>Every model,</i>
               </span>
-              <div className="relative">
-                <p className="mb-8 text-sm leading-relaxed break-words text-muted-foreground md:text-base [&_pre]:max-w-full [&_pre]:overflow-x-auto">
-                  Bitcoiners get the best price! And with Routstrd, Bitcoiners also get the best experience. The competition between Routstr nodes is getting heated right now and thus you&apos;re getting the best price for your sats.
-                </p>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center">
-                      <BitcoinLogo className="w-[70%] h-[70%] text-foreground" />
-                    </div>
-                    <div className="flex min-w-0 flex-col">
-                      <span className="truncate text-xs font-bold text-foreground">Routstrd</span>
-                      <span className="truncate text-[10px] text-muted-foreground">Battle-tested for a month. Built by Bitcoiners, for Bitcoiners.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+              <span>
+                <i style={{ ["--i" as string]: 1 }}>for your agents.</i>
+              </span>
+            </h1>
           </div>
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </section>
-
-      {/* CTA + Resources */}
-      <section className="relative py-20 md:flex md:min-h-[calc(100svh-80px)] md:flex-col md:justify-center">
-        <PageContainer>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-6">Try it out</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                Please give Routstrd a spin. If you face any issues, let us know and we&apos;ll fix it fast.
-              </p>
-              <div className="bg-code-bg shadow-elevation border border-border overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-foreground/5">
-                  <span className="text-[10px] text-muted-foreground">bash</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => copyToClipboard("bun install -g routstrd\nroutstrd onboard\nroutstrd receive 2100", 99)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    {copiedBlock === 99 ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                  </Button>
-                </div>
-                <div className="space-y-1 p-4 font-mono text-[11px] text-muted-foreground">
-                  <div className="flex gap-2 break-all"><span className="text-green-500">$</span><span>bun install -g routstrd</span></div>
-                  <div className="flex gap-2 break-all"><span className="text-green-500">$</span><span>routstrd onboard</span></div>
-                  <div className="flex gap-2 break-all"><span className="text-green-500">$</span><span>routstrd receive 2100</span></div>
-                </div>
-              </div>
+          <div className="rd-intro">
+            <p className="pg-lede">
+              A small program on your computer. It sends your agents&apos; requests to the cheapest Routstr node and pays it in
+              sats.
+            </p>
+            <div className="rd-cta">
+              <a className="rd-btn" href="#install">
+                Install it <Arrow />
+              </a>
+              <a className="rd-link" href={GITHUB} target="_blank" rel="noopener noreferrer">
+                Code on GitHub
+              </a>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-6">Resources</h2>
-              <div className="space-y-4">
-                {[
-                  { title: "Nostr Profile", url: "https://njump.app/npub1ftt05tgku25m2akgvw6v7aqy5ux5mseqcrzy05g26ml43xf74nyqsredsh" },
-                  { title: "GitHub", url: "https://github.com/routstr/routstrd" },
-                  { title: "Docs", url: "https://docs.routstr.com" },
-                ].map((item) => (
-                  <a key={item.title} href={item.url} target="_blank" rel="noopener noreferrer" className="group flex items-center justify-between border border-border p-4 hover:bg-muted transition-colors">
-                    <span className="text-sm font-bold text-foreground group-hover:underline underline-offset-4">{item.title}</span>
-                    <ArrowRight className="w-3 h-3 text-muted-foreground group-hover:text-foreground" />
-                  </a>
-                ))}
-              </div>
-            </div>
+            <ul className="rd-facts">
+              <li>Linux, macOS</li>
+              <li>No sign-up</li>
+              <li>Lightning, Cashu</li>
+              <li>Open source</li>
+            </ul>
           </div>
-        </PageContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-      </section>
+        </header>
 
-      <Toaster richColors position="bottom-right" theme="dark" />
+        <RouteStage />
+
+        <section className="rd-how" aria-labelledby="rd-how">
+          <p className="pg-label" id="rd-how">
+            How it picks
+          </p>
+          <Steps
+            steps={[
+              ["Finds", "Nodes list themselves on Nostr. It looks again every 21 minutes."],
+              ["Picks", "The cheapest node a reviewer approved."],
+              ["Pays", "From its own wallet. Sats left on a node come back on their own."],
+              ["Moves on", "A node that fails sits out a while, longer if it keeps failing. The next one takes over."],
+            ]}
+          />
+        </section>
+
+        <section className="rd-part" id="install" aria-labelledby="rd-install">
+          <div>
+            <p className="pg-label">Install</p>
+            <h2 id="rd-install">Three commands.</h2>
+            <p className="pg-lede">Then use your agent as you always do.</p>
+          </div>
+          <CodePanel
+            label="Your agent"
+            examples={agents}
+            under={
+              <>
+                With Bun: <code>bun i -g routstrd</code>
+              </>
+            }
+          />
+        </section>
+
+        <section className="rd-part rd-watch" aria-labelledby="rd-watch">
+          <div>
+            <p className="pg-label">Watch</p>
+            <h2 id="rd-watch">
+              Every sat,
+              <br />
+              in plain sight.
+            </h2>
+            <p className="pg-lede">
+              <code>routstrd top</code> shows your balance and what each model, node and agent cost you, live in your terminal.
+            </p>
+          </div>
+          <Top />
+        </section>
+
+        <section className="rd-part" aria-labelledby="rd-teams">
+          <div>
+            <p className="pg-label">Teams</p>
+            <h2 id="rd-teams">
+              One wallet
+              <br />
+              for the whole team.
+            </h2>
+            <p className="pg-lede">
+              Run routstrd-auth on a server. Everyone gets their own key and a monthly limit in sats.
+            </p>
+            <a className="rd-link rd-more" href={AUTH} target="_blank" rel="noopener noreferrer">
+              routstrd-auth on GitHub
+            </a>
+          </div>
+          <CodePanel label="Who you are" examples={team} />
+        </section>
+
+        <footer className="rd-end">
+          <ul>
+            <li>
+              <a href={GITHUB} target="_blank" rel="noopener noreferrer">
+                GitHub
+              </a>
+            </li>
+            <li>
+              <a href="https://docs.routstr.com" target="_blank" rel="noopener noreferrer">
+                Docs
+              </a>
+            </li>
+            <li>
+              <a href={`${GITHUB}/blob/main/SKILL.md`} target="_blank" rel="noopener noreferrer">
+                Every command
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://njump.me/npub1ftt05tgku25m2akgvw6v7aqy5ux5mseqcrzy05g26ml43xf74nyqsredsh"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Nostr
+              </a>
+            </li>
+          </ul>
+          <p>
+            No terminal?{" "}
+            <a href="https://chat.routstr.com" target="_blank" rel="noopener noreferrer">
+              Open the chat
+            </a>
+          </p>
+        </footer>
+      </section>
     </SiteShell>
   );
 }
