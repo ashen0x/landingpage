@@ -377,3 +377,37 @@
     animation: none;
   }
 }
+
+/* how the search for nodes went: found, answered, and the relays that took part */
+.pr-found {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  margin: 14px 0 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+/* the list in two parts: Routstr's own picks, then every model */
+.pr-part {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding: 24px 4px 10px;
+  box-shadow: inset 0 -1px 0 var(--hair);
+}
+.pr-part h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.pr-part p {
+  margin: 0;
+  color: var(--faint);
+  font-size: 13px;
+}

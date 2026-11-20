@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchModels, type Model, type Provider } from "@/app/data/models";
+import { initialProviderDiscovery, type ProviderDiscoveryProgress } from "@/lib/api/providers";
 
 export type NodeList = { provider: Provider; models: Model[] };
 
@@ -55,9 +56,11 @@ async function save(nodes: NodeList[]) {
  * show at once, and the new ones replace them in one step when all nodes have
  * answered.
  */
-export function useNodeLists(): { nodes: NodeList[]; loading: boolean } {
+export function useNodeLists(): { nodes: NodeList[]; loading: boolean; discovery: ProviderDiscoveryProgress } {
   const [nodes, setNodes] = useState<NodeList[]>([]);
   const [loading, setLoading] = useState(true);
+  // how many nodes the search has found so far, and which relays have answered it
+  const [discovery, setDiscovery] = useState(initialProviderDiscovery);
   useEffect(() => {
     let active = true;
     let timer = 0;
@@ -87,6 +90,8 @@ export function useNodeLists(): { nodes: NodeList[]; loading: boolean } {
         if (saved) return;
         waiting = [...waiting.filter((node) => node.provider.pubkey !== provider.pubkey), answer];
         if (!timer) timer = window.setTimeout(handOver, HAND_OVER_MS);
+      }, (progress) => {
+        if (active) setDiscovery(progress);
       });
       window.clearTimeout(timer);
       handOver();
@@ -102,5 +107,5 @@ export function useNodeLists(): { nodes: NodeList[]; loading: boolean } {
       window.clearTimeout(timer);
     };
   }, []);
-  return { nodes, loading };
+  return { nodes, loading, discovery };
 }

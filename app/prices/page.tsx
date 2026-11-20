@@ -7,8 +7,10 @@ import { Mark } from "@/components/layout/Mark";
 import { companyIn } from "@/components/stats/model-company-icon";
 import { useNodeLists } from "@/lib/use-node-lists";
 import { fetchListPrices, fetchModelIdMappings, fetchReviewLabels } from "@/lib/api/price-sources";
+import { fetchRoutstr21ModelIds } from "@/lib/routstr21";
 import {
   buildRadar,
+  curatedModelIds,
   isApproved,
   standing,
   summarizeNode,
@@ -69,10 +71,11 @@ function writeUrl(node: string, query: string) {
 }
 
 export default function PricesPage() {
-  const { nodes, loading: loadingNodes } = useNodeLists();
+  const { nodes, loading: loadingNodes, discovery } = useNodeLists();
   const [labels, setLabels] = useState<Map<string, string> | null>(null);
   const [mappings, setMappings] = useState<ModelIdMappings | null>(null);
   const [listPrices, setListPrices] = useState<Map<string, TokenRates>>(() => new Map());
+  const [curatedIds, setCuratedIds] = useState<string[] | null>(null);
   const [search, setSearch] = useState("");
   const [myNode, setMyNode] = useState("");
   const [openModel, setOpenModel] = useState<string | null>(null);
@@ -98,6 +101,7 @@ export default function PricesPage() {
     } catch {
       // storage blocked: start with no node picked
     }
+    void fetchRoutstr21ModelIds().then((ids) => active && setCuratedIds(ids));
     void fetchReviewLabels().then((found) => active && setLabels(found));
     void fetchModelIdMappings().then((found) => active && setMappings(found));
     void fetchListPrices().then((found) => active && setListPrices(found));
@@ -251,7 +255,24 @@ export default function PricesPage() {
       );
   }, [rows, search, picked, view, requests, mineModels]);
 
-  const loading = !labels || !mappings || (loadingNodes && rows.length === 0);
+  // Routstr's own list of models (kind 38423) leads, in the order it publishes. The same models
+  // stand in the full list below as well, so nothing is hidden by being on it.
+  const curated = useMemo(() => curatedModelIds(curatedIds ?? [], mappings ?? {}), [curatedIds, mappings]);
+  const curatedRows = useMemo(
+    () =>
+      visibleRows
+        .filter((row) => curated.has(row.modelId))
+        .sort((a, b) => (curated.get(a.modelId) ?? 0) - (curated.get(b.modelId) ?? 0)),
+    [visibleRows, curated]
+  );
+
+  // Wait for that list too: drawn without it, every row would stand under "All models" and the
+  // listed ones would then jump up.
+  const loading = !labels || !mappings || curatedIds === null || (loadingNodes && rows.length === 0);
+  // how the search for nodes went: found, answered with models, and which relays took part
+  const relayWords: Record<string, string> = { "no-events": "no events returned", timeout: "timed out" };
+  const relays = Object.entries(discovery.relays);
+  const relaysOn = relays.filter(([, state]) => state === "received" || state === "connected").length;
   const left = visibleRows.length - shown;
   const showAll = () => {
     setSearch("");
@@ -266,6 +287,78 @@ export default function PricesPage() {
         ["behind", "Not first", mine.models - mine.first],
       ] as const)
     : [];
+  /** One model's row. It opens on its own in each part of the list, so `openKey` tells the parts apart. */
+  const modelRow = (row: (typeof rows)[number], openKey: string) => {
+    const entry = row.entries.find((e) => e.url === picked);
+    const shownEntry = entry ?? row.winner;
+    const isOpen = openModel === openKey;
+    const asked = picked ? (mineModels?.[usageKey(row.modelId)] ?? 0) : (requests.get(row.modelId) ?? 0);
+    return (
+      <Fragment key={openKey}>
+        <button
+          type="button"
+          className="pg-row"
+          aria-expanded={isOpen}
+          onClick={() => setOpenModel(isOpen ? null : openKey)}
+        >
+          <span className="pg-name pg-marked">
+            <Mark company={companyIn(row.modelId)} />
+            <b className="pr-id">{row.modelId}</b>
+          </span>
+          <span className="pg-num pg-end pr-asked" data-quiet>
+            {asked > 0 ? formatCompactCount(asked) : usage.requests || usage.done ? "—" : "·"}
+          </span>
+          {!picked && <span className="pg-one pr-winner">{row.winner?.name ?? "—"}</span>}
+          <span className="pg-num pg-end">{money(shownEntry)}</span>
+          {picked && (
+            <span className="pg-num pg-end pr-cut" data-quiet>
+              {money(row.winner)}
+            </span>
+          )}
+          {picked && (
+            <span className="pg-num pg-end" data-quiet data-under={entry?.rank === 1 || undefined}>
+              {entry?.rank === 1 ? "first" : entry?.rank ? `#${entry.rank}` : "—"}
+            </span>
+          )}
+          <span className="pg-num pg-end pr-nodes-col" data-quiet>
+            {row.entries.filter((e) => e.approved).length}
+          </span>
+          <span
+            className="pg-num pg-end pr-vs"
+            data-quiet
+            data-under={
+              (shownEntry?.multiplier !== null && shownEntry?.multiplier !== undefined && shownEntry.multiplier < 0.995) ||
+              undefined
+            }
+          >
+            {versus(shownEntry?.multiplier)}
+          </span>
+        </button>
+
+        {isOpen && (
+          <ol className="pr-open">
+            {row.entries.map((line) => (
+              <li
+                key={line.url}
+                data-first={line.rank === 1 || undefined}
+                data-mine={line.url === picked || undefined}
+                data-off={!line.approved || undefined}
+              >
+                <span>{line.rank ?? "—"}</span>
+                <span>
+                  {line.name}
+                  {!line.approved && <i>not approved</i>}
+                </span>
+                <span>{money(line)}</span>
+                <span className="pr-vs">{versus(line.multiplier)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Fragment>
+    );
+  };
+
   const nodeLine = (line: (typeof board)[number], lead: boolean) => (
     <button
       key={line.node.url}
@@ -316,6 +409,26 @@ export default function PricesPage() {
           ) : (
             "No node answered just now."
           )}
+        </p>
+        <p className="pr-found">
+          <span title="Nodes found in Nostr announcements and in the HTTP directory, each key counted once">
+            {discovery.nodes ?? "…"} nodes found
+          </span>
+          <span title="Nodes that answered with a list of models">
+            {nodes.filter((node) => node.models.length > 0).length} with models{loadingNodes ? ", still asking" : ""}
+          </span>
+          <span className="pg-relays" role="img" aria-label={`${relaysOn} of ${relays.length} relays answered the search for nodes`}>
+            {relays.map(([url, state]) => (
+              <i
+                key={url}
+                data-on={state === "received" || state === "connected" || undefined}
+                title={`${url.replace(/^wss:\/\//, "")}: ${relayWords[state] ?? state}`}
+              />
+            ))}
+            <span>
+              {relaysOn} of {relays.length} relays
+            </span>
+          </span>
         </p>
 
         <div className="pr-sides">
@@ -481,76 +594,20 @@ export default function PricesPage() {
                 </p>
               ) : (
                 <>
-                  {visibleRows.slice(0, shown).map((row) => {
-                    const entry = row.entries.find((e) => e.url === picked);
-                    const shownEntry = entry ?? row.winner;
-                    const isOpen = openModel === row.modelId;
-                    const asked = picked ? (mineModels?.[usageKey(row.modelId)] ?? 0) : (requests.get(row.modelId) ?? 0);
-                    return (
-                      <Fragment key={row.modelId}>
-                        <button
-                          type="button"
-                          className="pg-row"
-                          aria-expanded={isOpen}
-                          onClick={() => setOpenModel(isOpen ? null : row.modelId)}
-                        >
-                          <span className="pg-name pg-marked">
-                            <Mark company={companyIn(row.modelId)} />
-                            <b className="pr-id">{row.modelId}</b>
-                          </span>
-                          <span className="pg-num pg-end pr-asked" data-quiet>
-                            {asked > 0 ? formatCompactCount(asked) : usage.requests || usage.done ? "—" : "·"}
-                          </span>
-                          {!picked && <span className="pg-one pr-winner">{row.winner?.name ?? "—"}</span>}
-                          <span className="pg-num pg-end">{money(shownEntry)}</span>
-                          {picked && (
-                            <span className="pg-num pg-end pr-cut" data-quiet>
-                              {money(row.winner)}
-                            </span>
-                          )}
-                          {picked && (
-                            <span className="pg-num pg-end" data-quiet data-under={entry?.rank === 1 || undefined}>
-                              {entry?.rank === 1 ? "first" : entry?.rank ? `#${entry.rank}` : "—"}
-                            </span>
-                          )}
-                          <span className="pg-num pg-end pr-nodes-col" data-quiet>
-                            {row.entries.filter((e) => e.approved).length}
-                          </span>
-                          <span
-                            className="pg-num pg-end pr-vs"
-                            data-quiet
-                            data-under={
-                              (shownEntry?.multiplier !== null && shownEntry?.multiplier !== undefined && shownEntry.multiplier < 0.995) ||
-                              undefined
-                            }
-                          >
-                            {versus(shownEntry?.multiplier)}
-                          </span>
-                        </button>
-
-                        {isOpen && (
-                          <ol className="pr-open">
-                            {row.entries.map((line) => (
-                              <li
-                                key={line.url}
-                                data-first={line.rank === 1 || undefined}
-                                data-mine={line.url === picked || undefined}
-                                data-off={!line.approved || undefined}
-                              >
-                                <span>{line.rank ?? "—"}</span>
-                                <span>
-                                  {line.name}
-                                  {!line.approved && <i>not approved</i>}
-                                </span>
-                                <span>{money(line)}</span>
-                                <span className="pr-vs">{versus(line.multiplier)}</span>
-                              </li>
-                            ))}
-                          </ol>
-                        )}
-                      </Fragment>
-                    );
-                  })}
+                  {curatedRows.length > 0 && (
+                    <>
+                      <div className="pr-part">
+                        <h3>Routstr&rsquo;s picks</h3>
+                        <p>The models the chat app lists, in its order.</p>
+                      </div>
+                      {curatedRows.map((row) => modelRow(row, `picks:${row.modelId}`))}
+                      <div className="pr-part">
+                        <h3>All models</h3>
+                        <p>Every model, the picks too. Most asked first.</p>
+                      </div>
+                    </>
+                  )}
+                  {visibleRows.slice(0, shown).map((row) => modelRow(row, row.modelId))}
                   {left > 0 && (
                     <p className="pg-rest">
                       <span className="pg-count">
