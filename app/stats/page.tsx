@@ -632,7 +632,7 @@ function StatsPageContent() {
             <p className="st-only">Showing only <b>{nodeName}</b><button type="button" onClick={() => pickNode(null)}>Show all nodes</button></p>
           ) : null}
           {relays.length > 0 ? (
-            <p className="st-relays" role="img" aria-label={`${answered} of ${relays.length} relays answered`}>
+            <p className="pg-relays pg-far" role="img" aria-label={`${answered} of ${relays.length} relays answered`}>
               {relays.map((relay) => (
                 <i key={relay.url} data-on={RELAY_STATE_META[relay.state].answered || undefined} title={`${relay.url.replace(/^wss:\/\//, "").replace(/\/$/, "")}: ${RELAY_STATE_META[relay.state].label}`} />
               ))}

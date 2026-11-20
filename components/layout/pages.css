@@ -209,6 +209,30 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* which relays answered: a dot each, named when the pointer rests on it */
+.pg-relays {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.pg-relays i {
+  width: 12px;
+  height: 12px;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  background: var(--hair) padding-box;
+}
+.pg-relays i[data-on] {
+  background: var(--dim) padding-box;
+}
+.pg-relays span {
+  margin-left: 6px;
+}
+
 /* ── narrowing a list: chips for the kind of thing, and a row of makers' marks ── */
 
 .pg-sift {

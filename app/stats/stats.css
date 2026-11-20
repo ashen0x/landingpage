@@ -25,30 +25,6 @@
   color: var(--ink);
 }
 
-/* which relays answered: a dot each, named when the pointer rests on it */
-.st-relays {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 0 auto;
-  color: var(--faint);
-  font-family: var(--mono);
-  font-size: 11.5px;
-}
-.st-relays i {
-  width: 12px;
-  height: 12px;
-  border: 3px solid transparent;
-  border-radius: 50%;
-  background: var(--hair) padding-box;
-}
-.st-relays i[data-on] {
-  background: var(--dim) padding-box;
-}
-.st-relays span {
-  margin-left: 6px;
-}
-
 /* ── the three numbers ── */
 .st-nums {
   display: grid;
