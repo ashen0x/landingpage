@@ -1,4 +1,5 @@
-import { SimplePool, type Event } from "nostr-tools";
+import type { Event } from "nostr-tools";
+import { createPool } from "@/lib/relay-client";
 import {
   ANALYTICS_KIND,
   DAY_MS,
@@ -85,27 +86,12 @@ async function count(events: Event[]): Promise<Counted | null> {
 
 /** Ask the relays and count. `onCount` hears the counts as they grow; the promise ends when all relays have answered. */
 export async function loadUsage(onCount: (counted: Counted) => void): Promise<void> {
-  const pool = new SimplePool();
+  const pool = createPool();
   // A report is signed after the days it covers, so nothing older is needed.
   const since = Math.floor((completedRange("30d").start - DAY_MS) / 1000);
   const events = new Map<string, Event>();
-  // A report already checked is not checked again when another relay sends it.
   const ask = async (relay: string) => {
-    const found = await new Promise<Event[]>((resolve) => {
-      const got: Event[] = [];
-      const end = () => {
-        clearTimeout(giveUp);
-        sub.close();
-        resolve(got);
-      };
-      const giveUp = setTimeout(end, 20000);
-      const sub = pool.subscribe([relay], { kinds: [ANALYTICS_KIND], since, limit: 1000 }, {
-        alreadyHaveEvent: (id) => events.has(id),
-        onevent: (event) => got.push(event),
-        oneose: end,
-        onclose: end,
-      });
-    });
+    const found = await pool.querySync([relay], { kinds: [ANALYTICS_KIND], since, limit: 1000 }, { maxWait: 20000 });
     const before = events.size;
     for (const event of found) events.set(event.id, event);
     if (events.size === before) return;
