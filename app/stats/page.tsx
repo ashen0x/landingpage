@@ -22,11 +22,11 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { Mark } from "@/components/layout/Mark";
 import { pulse } from "@/components/layout/Band";
 import { companyIn } from "@/components/stats/model-company-icon";
+import { providerShortId } from "@/components/stats/stats-chart-domain";
 import { getDefaultRelays } from "@/lib/nostr";
 import { fetchListData } from "@/lib/api/price-sources";
 import { formatCompactCount } from "@/lib/number-format";
-import { nodeKey, usageKey } from "@/lib/usage-count";
-import { useNodeLists } from "@/lib/use-node-lists";
+import { usageKey } from "@/lib/usage-count";
 import "@/components/layout/pages.css";
 import "./stats.css";
 
@@ -479,21 +479,14 @@ function StatsPageContent() {
   // median before anything is counted, so totals and shares agree.
   const { providers: visible, sanity } = useMemo(() => sanitizeStatsProviders(timelines, range), [timelines, range]);
 
-  // a node is named as the rest of the site names it: by its address, or else by its key
-  const { nodes: listed } = useNodeLists();
-  const nameOf = useMemo(() => {
-    const names = new Map<string, string>();
-    for (const { provider } of listed) {
-      if (!provider.name) continue;
-      names.set(nodeKey(provider.endpoint_url), provider.name);
-      if (provider.pubkey) names.set(provider.pubkey, provider.name);
-    }
-    return new Map(visible.map((provider) => {
-      const known = [...provider.reports.flatMap((report) => report.endpoints.map(nodeKey)), ...provider.providerId.split(":")]
-        .map((key) => names.get(key)).find(Boolean);
-      return [provider.providerId, known ?? provider.providerLabel];
-    }));
-  }, [listed, visible]);
+  // A node's name comes with its report: the loader joins it from the node's announcement.
+  // Two nodes can carry the same name, so those rows also show the start of their key.
+  const nameOf = useMemo(() => new Map(visible.map((provider) => [provider.providerId, provider.providerLabel])), [visible]);
+  const sameName = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const provider of visible) seen.set(provider.providerLabel, (seen.get(provider.providerLabel) ?? 0) + 1);
+    return new Set(Array.from(seen.entries()).filter(([, count]) => count > 1).map(([label]) => label));
+  }, [visible]);
 
   const node = nodeId ? (visible.find((provider) => provider.providerId === nodeId) ?? null) : null;
   const all = useMemo(() => selectStats(visible, range, grouping), [visible, range, grouping]);
@@ -747,7 +740,7 @@ function StatsPageContent() {
                 <div className="st-cols"><span>Node</span><span className="st-over" data-by={mode === "requests" || undefined}><b>Requests</b><em>share</em></span><span className="st-over" data-by={mode === "sats" || undefined}><b>Sats paid</b><em>share</em></span></div>
                 {rightRows.map((row, index) => (
                   <button key={row.id} type="button" className="st-row" style={{ "--n": Math.max(0, index - Math.max(FIRST_ROWS, shownNodes - MORE_ROWS)) } as CSSProperties} data-on={nodeId === row.id || undefined} aria-pressed={nodeId === row.id} onClick={() => pickNode(row.id)}>
-                    <span className="st-name"><span>{nameOf.get(row.id)}</span></span>
+                    <span className="st-name"><span>{nameOf.get(row.id)}{sameName.has(nameOf.get(row.id) ?? "") ? <small> {providerShortId(row.id)}</small> : null}</span></span>
                     {share(row, network)}
                   </button>
                 ))}

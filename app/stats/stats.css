@@ -333,6 +333,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.st-name small {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
 .st-share {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 3.6rem 2.9rem;
