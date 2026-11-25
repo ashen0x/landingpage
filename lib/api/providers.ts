@@ -151,6 +151,16 @@ export function normalizeEndpointForFetch(urlOrHost: string): string {
   return hasProtocol ? urlOrHost : `https://${urlOrHost}`;
 }
 
+/**
+ * Whether this page can ask an endpoint at all. A page served over https cannot fetch plain
+ * http: the browser blocks the request. That includes .onion addresses, which apps use only
+ * when they run on an onion address themselves.
+ */
+export function canFetchFromThisPage(urlOrHost: string): boolean {
+  if (typeof window === "undefined" || window.location.protocol !== "https:") return true;
+  return !/^http:\/\//i.test(normalizeEndpointForFetch(urlOrHost.trim()));
+}
+
 function tagValues(event: Event, name: string): string[] {
   return event.tags
     .filter((tag) => tag[0] === name && typeof tag[1] === "string" && tag[1])

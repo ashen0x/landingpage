@@ -8,6 +8,7 @@ export interface PerRequestLimits {
 }
 
 import {
+  canFetchFromThisPage,
   fetchProvidersList,
   getPrimaryHttpEndpoint,
   getProviderNonStagingEndpoints,
@@ -176,7 +177,7 @@ export async function fetchModels(
         let providerModels: Model[] = [];
         let fetchedVersion = p.version;
 
-        if (primary) {
+        if (primary && canFetchFromThisPage(primary)) {
           const base = normalizeEndpointForFetch(primary).replace(/\/$/, "");
 
           // Fetch models and info in parallel
