@@ -62,12 +62,24 @@ export default function ModelDetailPage() {
     };
   }, []);
 
+  /* The id in the address as nodes spell it: exactly, else in other capitals, else by its last part
+     alone (an old link to "gpt-x" still finds "openai/gpt-x"). The strictest way that finds a seller is used. */
+  const sold = useMemo(() => {
+    const ids = nodes.flatMap(({ models }) => models.map((m) => m.id));
+    const lower = decodedModelId.toLowerCase();
+    const ways: ((id: string) => boolean)[] = [
+      (id) => id === decodedModelId,
+      (id) => id.toLowerCase() === lower,
+      (id) => usageKey(id) === usageKey(decodedModelId),
+    ];
+    return ways.find((way) => ids.some(way)) ?? ways[0];
+  }, [nodes, decodedModelId]);
   // every node whose list has this model, once each: named nodes first, then by what a request costs
   const providersWithPricing = useMemo(() => {
     const seen = new Set<string>();
     return nodes
       .flatMap(({ provider, models }) => {
-        const found = models.find((m) => m.id === decodedModelId);
+        const found = models.find((m) => sold(m.id));
         if (!found || seen.has(provider.id)) return [];
         seen.add(provider.id);
         return [{ provider, model: found }];
@@ -79,7 +91,7 @@ export default function ModelDetailPage() {
         const cost = (entry: (typeof a)) => (entry.model.sats_unpriced ? null : requestCost(entry.model.sats_pricing)) || Infinity;
         return cost(a) - cost(b) || 0;
       });
-  }, [nodes, decodedModelId]);
+  }, [nodes, sold]);
   const model = providersWithPricing[0]?.model ?? null;
   const notFound = !pricingLoading && !model;
 
