@@ -154,7 +154,8 @@ export default function RoutstrdPage() {
           <Top />
         </section>
 
-        <section className="rd-part" aria-labelledby="rd-teams">
+        {/* "#teams" is the old page's address for this part: links to it still land here */}
+        <section className="rd-part" id="teams" aria-labelledby="rd-teams">
           <div>
             <p className="pg-label">Teams</p>
             <h2 id="rd-teams">
