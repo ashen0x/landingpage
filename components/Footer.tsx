@@ -9,6 +9,7 @@ const links = [
   { text: "Stats", href: "/stats" },
   { text: "Daemon", href: "/routstrd" },
   { text: "Top-Up", href: "/topup" },
+  { text: "Capabilities", href: "/capabilities" },
   { text: "Blog", href: "/blog" },
   { text: "Roadmap", href: "/roadmap" },
   { text: "Docs", href: "https://docs.routstr.com" },
