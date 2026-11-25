@@ -28,6 +28,9 @@ function decodeSegments(segments: string[]): string[] {
   return segments.map((s) => decodeURIComponent(s));
 }
 
+/** One node of one operator: two operators can give their nodes the same id. */
+const sellerKey = (provider: Provider) => `${provider.pubkey}:${provider.id}`;
+
 function isUnknownProviderName(name: string | null | undefined): boolean {
   return (name ?? "").trim().toLowerCase() === "unknown";
 }
@@ -81,8 +84,8 @@ export default function ModelDetailPage() {
     return nodes
       .flatMap(({ provider, models }) => {
         const found = models.find((m) => sold(m.id));
-        if (!found || seen.has(provider.id)) return [];
-        seen.add(provider.id);
+        if (!found || seen.has(sellerKey(provider))) return [];
+        seen.add(sellerKey(provider));
         return [{ provider, model: found }];
       })
       .sort((a, b) => {
@@ -108,7 +111,7 @@ export default function ModelDetailPage() {
       labels
     );
   const sellers = [...providersWithPricing].sort((a, b) => Number(approved(b.provider)) - Number(approved(a.provider)));
-  const selected = sellers.find((entry) => entry.provider.id === selectedProviderId) ?? sellers[0];
+  const selected = sellers.find((entry) => sellerKey(entry.provider) === selectedProviderId) ?? sellers[0];
   // a token is kept per node: for the node the code below is written for
   const storageBaseUrl = (selected?.provider.endpoint_url || "https://api.routstr.com").replace(/\/v1$/, "");
 
@@ -278,13 +281,13 @@ export default function ModelDetailPage() {
             <div className="md-sellers">
               {sellers.map((entry) => (
                 <button
-                  key={entry.provider.id}
+                  key={sellerKey(entry.provider)}
                   type="button"
                   aria-pressed={entry === selected}
                   data-best={entry === best || undefined}
                   data-off={(reviewed && !approved(entry.provider)) || undefined}
                   title="Write the code below for this node"
-                  onClick={() => setSelectedProviderId(entry.provider.id)}
+                  onClick={() => setSelectedProviderId(sellerKey(entry.provider))}
                 >
                   <span>
                     {entry.provider.name}
