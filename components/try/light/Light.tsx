@@ -115,7 +115,7 @@ const voices = [
     face: "calle",
     handle: "npub12rv5...sf485vg",
     text: "This is incredible. AI chat pay per use. No accounts but instant and anonymous Bitcoin micro payments with Cashu.\n\nTry it with a tiny amount and see for yourself!",
-    href: "https://nostr.com/nevent1qqszj3rsayzeguyu02lfph63xm4lrh38el73yq37zsnhc6vrqq5tkxqzypgdjn7zmpvqc6ptqud9gtutrcc6yq9s2z96h9dr80hss4wl9qwkx0u6nyh",
+    href: "https://njump.me/nevent1qqszj3rsayzeguyu02lfph63xm4lrh38el73yq37zsnhc6vrqq5tkxqzypgdjn7zmpvqc6ptqud9gtutrcc6yq9s2z96h9dr80hss4wl9qwkx0u6nyh",
   },
   {
     on: "nostr",
