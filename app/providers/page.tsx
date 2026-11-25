@@ -26,6 +26,13 @@ export default function ProvidersPage() {
   const searchBox = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLElement>(null);
 
+  // a link can name the node to open: /providers?node=<its key>
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    asked.current = new URLSearchParams(window.location.search).get("node");
+    if (asked.current) setPicked(asked.current);
+  }, []);
+
   useEffect(() => {
     let active = true;
     void fetchReviewLabels().then((found) => active && setLabels(found));
@@ -97,6 +104,12 @@ export default function ProvidersPage() {
         line.provider.pubkey.toLowerCase().includes(needle))
   );
   const open = shown.find((line) => line.provider.pubkey === picked) ?? shown[0];
+  // the node a link asked for is brought into sight once, when its row is there
+  useEffect(() => {
+    if (!asked.current || !shown.some((line) => line.provider.pubkey === asked.current)) return;
+    asked.current = null;
+    document.querySelector('.pg-row[aria-expanded="true"]')?.scrollIntoView({ block: "center" });
+  }, [shown]);
   const openKey = open?.provider.pubkey;
   useEffect(() => {
     card.current?.scrollTo({ top: 0 });

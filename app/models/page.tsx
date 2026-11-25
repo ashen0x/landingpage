@@ -858,7 +858,7 @@ export default function ModelsPage() {
                     data-best={(i === 0 && node.route && node.approved) || undefined}
                     data-off={!node.approved || undefined}
                   >
-                    <Link href={`/providers/${encodeURIComponent(node.id)}`}>
+                    <Link href={`/providers?node=${node.pubkey}`}>
                       {node.name}
                       {!node.approved && <i>not approved</i>}
                     </Link>
