@@ -51,7 +51,8 @@ export default function ModelDetailPage() {
   const [idCopied, setIdCopied] = useState(false);
 
   const usage = useModelUsage();
-  const [labels, setLabels] = useState<Map<string, string>>(() => new Map());
+  /** Review labels, once asked for (null until then). None read is not "all approved": then nothing is said of approval. */
+  const [labels, setLabels] = useState<Map<string, string> | null>(null);
   const [listPrices, setListPrices] = useState<Map<string, TokenRates>>(() => new Map());
   useEffect(() => {
     let active = true;
@@ -99,8 +100,9 @@ export default function ModelDetailPage() {
 
   // approved nodes first: that is where apps send a request. Within each, the order above (by cost) holds.
   const place = (url: string) => url.trim().replace(/\/+$/, "").toLowerCase();
+  const reviewed = !!labels && labels.size > 0;
   const approved = (provider: Provider) =>
-    labels.size === 0 ||
+    reviewed &&
     isApproved(
       providersWithPricing.filter((entry) => place(entry.provider.endpoint_url) === place(provider.endpoint_url)).map((entry) => entry.provider.pubkey),
       labels
@@ -280,13 +282,13 @@ export default function ModelDetailPage() {
                   type="button"
                   aria-pressed={entry === selected}
                   data-best={entry === best || undefined}
-                  data-off={!approved(entry.provider) || undefined}
+                  data-off={(reviewed && !approved(entry.provider)) || undefined}
                   title="Write the code below for this node"
                   onClick={() => setSelectedProviderId(entry.provider.id)}
                 >
                   <span>
                     {entry.provider.name}
-                    {!approved(entry.provider) && <i>not approved</i>}
+                    {reviewed && !approved(entry.provider) && <i>not approved</i>}
                   </span>
                   <span>{price(sats ? entry.model.sats_pricing?.prompt : entry.model.pricing?.prompt)}</span>
                   <span>{price(sats ? entry.model.sats_pricing?.completion : entry.model.pricing?.completion)}</span>
@@ -299,7 +301,7 @@ export default function ModelDetailPage() {
           <aside className="md-side">
             {selected && (
               <div className="md-goes" data-picked={selected !== best || undefined}>
-                <p>{selected === best ? "A request goes to" : "You picked"}</p>
+                <p>{selected === best ? "A request goes to" : selectedProviderId ? "You picked" : "The cheapest node"}</p>
                 <b>{selected.provider.name}</b>
                 <dl>
                   <div>
@@ -323,7 +325,11 @@ export default function ModelDetailPage() {
                   {sats ? "sats" : "USD"} per 1M tokens.{" "}
                   {selected === best
                     ? "It is the cheapest approved node right now."
-                    : !approved(selected.provider)
+                    : !reviewed
+                      ? labels
+                        ? "The reviews of nodes could not be read just now, so this page cannot say which node apps would pick."
+                        : ""
+                      : !approved(selected.provider)
                       ? "This node is not approved, so apps do not send requests to it."
                       : best
                         ? `Apps would send the request to ${best.provider.name}, the cheapest approved node.`
