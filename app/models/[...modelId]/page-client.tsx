@@ -94,6 +94,8 @@ export default function ModelDetailPage() {
   }, [nodes, sold]);
   const model = providersWithPricing[0]?.model ?? null;
   const notFound = !pricingLoading && !model;
+  // no node's list at all is not the same as no node selling it
+  const noAnswer = notFound && !nodes.some((node) => node.models.length > 0);
 
   // approved nodes first: that is where apps send a request. Within each, the order above (by cost) holds.
   const place = (url: string) => url.trim().replace(/\/+$/, "").toLowerCase();
@@ -119,8 +121,12 @@ export default function ModelDetailPage() {
     return (
       <SiteShell>
         <section className="pg md">
-          <h1>No such model</h1>
-          <p className="pg-lede">No node sells a model under this name right now.</p>
+          <h1>{noAnswer ? "No node answered" : "No such model"}</h1>
+          <p className="pg-lede">
+            {noAnswer
+              ? "The nodes could not be asked just now, so this page cannot say who sells this model. Try again in a moment."
+              : "No node sells a model under this name right now."}
+          </p>
           <Link href="/models" className="pg-more">
             All models <ArrowRight strokeWidth={1.5} aria-hidden="true" />
           </Link>
