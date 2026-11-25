@@ -233,3 +233,14 @@ export const ease = (t: number) => t * t * (3 - 2 * t);
 /** Where the camera stands, and how wide it sees. */
 export const CAMERA = 6;
 export const FOV = 0.6;
+
+/** Give a context back to the browser once its canvas has left the page. A browser keeps only a
+ *  few alive (a phone about eight), and a page that is left would otherwise hold its own until
+ *  the garbage collector comes by. A canvas still on the page keeps its context. */
+export function release(gl: WebGL2RenderingContext | null) {
+  if (!gl) return;
+  const canvas = gl.canvas as HTMLCanvasElement;
+  window.setTimeout(() => {
+    if (!canvas.isConnected) gl.getExtension("WEBGL_lose_context")?.loseContext();
+  }, 0);
+}

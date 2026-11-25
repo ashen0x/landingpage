@@ -21,6 +21,7 @@ import {
   translate,
   type Mat,
   type Program,
+  release,
 } from "@/components/try/light/kit";
 
 /** A node selling the model, and what one request costs there. */
@@ -638,6 +639,11 @@ export class RouteLight {
   }
   stop() {
     cancelAnimationFrame(this.frame);
+  }
+  /** For good, when its page is left: stop, and hand the context back. */
+  dispose() {
+    this.stop();
+    release(this.gl);
   }
 
   private ready(slot: Slot) {

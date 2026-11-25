@@ -62,7 +62,7 @@ export function Band() {
     document.addEventListener("visibilitychange", onShow);
     return () => {
       live = null;
-      light.stop();
+      light.dispose();
       seen.disconnect();
       window.removeEventListener("pointermove", onPointer);
       window.removeEventListener("resize", onResize);

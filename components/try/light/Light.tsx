@@ -574,7 +574,7 @@ export function Light() {
     document.addEventListener("visibilitychange", onShow);
     return () => {
       window.clearTimeout(rest);
-      light.stop();
+      light.dispose();
       seen.disconnect();
       window.removeEventListener("scroll", follow);
       window.removeEventListener("resize", onResize);

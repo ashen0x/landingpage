@@ -298,7 +298,7 @@ export function RouteStage() {
     box.addEventListener("click", click);
     document.addEventListener("visibilitychange", show);
     return () => {
-      made.stop();
+      made.dispose();
       resize.disconnect();
       seen.disconnect();
       box.removeEventListener("pointermove", point);

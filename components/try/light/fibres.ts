@@ -9,7 +9,7 @@
    -> one composite pass that adds the glow, a little lens fringe, tone-maps, and lays grain. */
 
 import { ROUTSTR_MARK_PATH, ROUTSTR_MARK_VIEWBOX_MIN, ROUTSTR_MARK_VIEWBOX_SIZE } from "@/lib/brand";
-import { CAMERA, FOV, Glow, clamp, ease, multiply, perspective, program, rotate, scale, software, translate, type Program } from "./kit";
+import { CAMERA, FOV, Glow, clamp, ease, multiply, perspective, program, rotate, scale, software, translate, type Program, release } from "./kit";
 
 export type Pose = {
   form: number;
@@ -472,6 +472,11 @@ export class Fibres {
   }
   stop() {
     cancelAnimationFrame(this.frame);
+  }
+  /** For good, when its page is left: stop, and hand the context back. */
+  dispose() {
+    this.stop();
+    release(this.gl);
   }
 
   private draw(dt: number, still = false) {
