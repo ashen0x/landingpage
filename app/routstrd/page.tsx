@@ -78,7 +78,7 @@ export default function RoutstrdPage() {
             <h1 className="pg-title">
               <span>
                 <i>Every model,</i>
-              </span>
+              </span>{" "}
               <span>
                 <i style={{ ["--i" as string]: 1 }}>for your agents.</i>
               </span>

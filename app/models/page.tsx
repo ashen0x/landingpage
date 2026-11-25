@@ -550,7 +550,7 @@ export default function ModelsPage() {
         <h1 className="pg-title">
           <span>
             <i>Every model,</i>
-          </span>
+          </span>{" "}
           <span>
             <i style={{ ["--i" as string]: 1 }}>one market.</i>
           </span>

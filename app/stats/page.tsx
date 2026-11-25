@@ -622,7 +622,7 @@ function StatsPageContent() {
       <section className="pg st">
         <p className="pg-label">Stats</p>
         <h1 className="pg-title">
-          <span><i>What runs</i></span>
+          <span><i>What runs</i></span>{" "}
           <span><i style={{ "--i": 1 } as CSSProperties}>through it.</i></span>
         </h1>
         <p className="pg-lede">

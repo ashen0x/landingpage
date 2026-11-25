@@ -393,7 +393,7 @@ export default function PricesPage() {
         <h1 className="pg-title">
           <span>
             <i>Who wins</i>
-          </span>
+          </span>{" "}
           <span>
             <i style={{ ["--i" as string]: 1 }}>the route.</i>
           </span>

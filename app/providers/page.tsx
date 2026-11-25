@@ -230,7 +230,7 @@ export default function ProvidersPage() {
         <h1 className="pg-title">
           <span>
             <i>The nodes</i>
-          </span>
+          </span>{" "}
           <span>
             <i style={{ ["--i" as string]: 1 }}>behind it.</i>
           </span>

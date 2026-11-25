@@ -605,7 +605,7 @@ export function Light() {
             <div className="lt-in">
               <p className="lt-label">An open market for AI</p>
               <h1>
-                <Ln>One route to</Ln>
+                <Ln>One route to</Ln>{" "}
                 <Ln i={1}>every model.</Ln>
               </h1>
               <p className="lt-lede">
