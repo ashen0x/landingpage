@@ -26,7 +26,7 @@ const more: NavLink[] = [
   { title: "Routstr Daemon", href: "/routstrd", note: "Routing for coding agents" },
   { title: "Hosted Daemon", href: "https://github.com/Routstr/routstrd-auth", note: "One daemon for a team", external: true },
   { title: "Top-Up", href: "/topup", note: "Fund an API key" },
-  { title: "Capabilities", href: "/capabilities", note: "What nodes can do" },
+  { title: "Capabilities", href: "/capabilities", note: "What Routstr can do" },
   { title: "Blog", href: "/blog", note: "Guides and release notes" },
   { title: "Roadmap", href: "/roadmap", note: "What comes next" },
 ];

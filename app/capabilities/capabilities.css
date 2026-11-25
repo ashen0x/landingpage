@@ -1,0 +1,256 @@
+/* Capabilities. A short head and a row of names; under it the one playing in words, with the
+   request that does it, and the light beside them acting it out. */
+
+.cp.pg {
+  /* the kit's faintest grey is too pale to read as text: here every word is at least --dim */
+  --faint: var(--dim);
+  padding-top: clamp(28px, 5vh, 56px);
+}
+/* on a wide screen the title is one line, so the words under it are in sight without scrolling */
+@media (min-width: 1000px) {
+  .cp .pg-title span {
+    display: inline-block;
+    vertical-align: top;
+  }
+}
+
+.cp-body {
+  display: grid;
+  gap: clamp(18px, 3vh, 28px) clamp(28px, 4vw, 64px);
+  margin-top: clamp(20px, 3.6vh, 36px);
+}
+/* stacked, the light comes between the names and the words, short enough that the words are in sight */
+.cp-list {
+  order: 1;
+}
+.cp-stage {
+  order: 2;
+}
+.cp-text {
+  order: 3;
+}
+@media (min-width: 1000px) {
+  .cp-body {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-areas:
+      "list list"
+      "text light";
+    align-items: start;
+  }
+  .cp-list {
+    grid-area: list;
+  }
+  .cp-text {
+    grid-area: text;
+  }
+  .cp-stage {
+    grid-area: light;
+  }
+}
+
+/* ── the names ──────────────────────────────────────────────────────────── */
+
+.cp-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cp-pick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 15px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--dim);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition:
+    color 260ms ease,
+    background 260ms ease,
+    box-shadow 260ms ease;
+}
+.cp-pick:hover,
+.cp-pick[aria-checked="true"] {
+  color: var(--ink);
+}
+.cp-pick[aria-checked="true"] {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 30%, transparent);
+}
+
+/* the time left on the one playing: it fills, then the next one plays */
+.cp-bar {
+  position: absolute;
+  right: 15px;
+  bottom: 6px;
+  left: 15px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--gold);
+  transform-origin: left;
+  animation: cp-fill linear both;
+}
+/* it waits while someone is at the names or reading the words, and while the light is out of sight */
+.cp-body:has(.cp-list:focus-within, .cp-text:focus-within) .cp-bar,
+.cp-body[data-away] .cp-bar {
+  animation-play-state: paused;
+}
+/* only a real pointer: a tap leaves hover stuck on a phone */
+@media (hover: hover) {
+  .cp-body:has(.cp-list:hover, .cp-text:hover) .cp-bar {
+    animation-play-state: paused;
+  }
+}
+@keyframes cp-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* ── the one playing, in words and as a request ─────────────────────────── */
+
+.cp-text {
+  display: grid;
+  /* one column no wider than its room: a long line of code scrolls in its panel, not the page */
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(16px, 2.6vh, 24px);
+  align-content: start;
+  min-width: 0;
+}
+.cp-words {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.cp-about {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 220ms ease,
+    visibility 0s 220ms;
+}
+.cp-about[data-on] {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 480ms ease 140ms;
+}
+.cp-about h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.7rem, 2.7vw, 2.6rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.cp-line {
+  max-width: 36rem;
+  margin: 12px 0 0;
+  color: var(--dim);
+  font-size: 16px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.cp-stat {
+  max-width: 36rem;
+  margin: 10px 0 0;
+  color: var(--ink);
+  font-size: 14.5px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+.cp-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 15px;
+}
+.cp-go svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  transition: transform 400ms var(--out);
+}
+.cp-go:hover svg {
+  transform: translateX(4px);
+}
+
+/* ── the light ──────────────────────────────────────────────────────────── */
+
+.cp-stage {
+  position: relative;
+  height: clamp(140px, 26vh, 240px);
+  /* above the words it runs from one edge of the screen to the other */
+  margin: 0 calc(var(--pad) * -1);
+  overflow: hidden;
+  /* what the light is drawn on by day: the canvas multiplies onto it */
+  background: var(--background);
+  touch-action: pan-y;
+}
+.cp-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+  /* light added to the page, so its black is the page's own */
+  mix-blend-mode: screen;
+}
+/* by day the light is drawn as ink on paper, as the strip on the other pages is */
+:root:not(.dark) .cp-stage canvas {
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: multiply;
+}
+/* beside the words: as tall as they usually are, out to the edge of the screen on its right, and
+   faded in on its left so its box has no edge to see */
+@media (min-width: 1000px) {
+  .cp-stage {
+    height: clamp(340px, 50vh, 460px);
+    margin: 0 calc(var(--pad) * -1) 0 0;
+  }
+  .cp-stage canvas {
+    -webkit-mask-image:
+      linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent),
+      linear-gradient(to right, transparent, #000 12%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent),
+      linear-gradient(to right, transparent, #000 12%);
+    mask-composite: intersect;
+  }
+}
+
+/* no light: the words alone */
+.cp-body[data-dead] .cp-stage,
+.cp-body[data-dead] .cp-bar {
+  display: none;
+}
+@media (min-width: 1000px) {
+  .cp-body[data-dead] {
+    grid-template-areas:
+      "list list"
+      "text text";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-bar {
+    display: none;
+  }
+  .cp-about,
+  .cp-about[data-on] {
+    transition: none;
+  }
+}

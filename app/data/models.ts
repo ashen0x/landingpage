@@ -405,24 +405,6 @@ export function getPopularModels(
     .slice(0, count);
 }
 
-// Get a model id for example usage
-export function getExampleModelId(): string {
-  // Find a model from a well-known provider for examples
-  const candidates = models.filter(
-    (model) =>
-      model.name.toLowerCase().includes("qwen") ||
-      model.name.toLowerCase().includes("gemini") ||
-      model.name.toLowerCase().includes("glm")
-  );
-
-  if (candidates.length > 0) {
-    return candidates[0].id;
-  }
-
-  // Fallback to first model if no good candidates
-  return models.length > 0 ? models[0].id : "qwen/qwen3-14b";
-}
-
 // Get provider by ID
 export function getProviderById(id: string): Provider | undefined {
   return providers.find((provider) => provider.id === id);

@@ -101,6 +101,9 @@
   color: var(--gold);
   font-style: normal;
 }
+.rd-code pre .rd-back {
+  color: var(--dim);
+}
 .rd-code pre em {
   color: var(--faint);
   font-style: normal;
