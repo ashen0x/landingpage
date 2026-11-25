@@ -626,7 +626,7 @@ function StatsPageContent() {
           <span><i style={{ "--i": 1 } as CSSProperties}>through it.</i></span>
         </h1>
         <p className="pg-lede">
-          {all.hasData ? <><b>{all.reportingProviders}</b> nodes published what they served in the last {said}, each signed with its own key. This is their count, added up.</>
+          {all.hasData ? <><b>{all.reportingProviders}</b> {all.reportingProviders === 1 ? "node" : "nodes"} published what {all.reportingProviders === 1 ? "it" : "they"} served in the last {said}, each signed with its own key. This is {all.reportingProviders === 1 ? "its" : "their"} count{all.reportingProviders === 1 ? "" : ", added up"}.</>
             : "Nodes can publish what they served, each signed with its own key. This is their count, added up."}
         </p>
         <div className="pg-tools st-tools">
@@ -659,7 +659,7 @@ function StatsPageContent() {
             <div className="st-nums" role="group" aria-label="What the chart draws">
               <button type="button" className="st-num" aria-pressed={mode === "requests"} onClick={() => setMode("requests")}>
                 <b>{count(totals.requests)}</b><span>Requests</span>
-                <small>{count(totals.requests / range.days)} a day</small>
+                <small>{totals.requests > 0 && totals.requests < range.days ? "under 1" : count(totals.requests / range.days)} a day</small>
               </button>
               <button type="button" className="st-num" aria-pressed={mode === "sats"} onClick={() => setMode("sats")}>
                 <b>{count(totals.sats)}</b><span>Sats paid to {node ? "this node" : "nodes"}</span>
