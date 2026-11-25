@@ -97,6 +97,13 @@ function getStableCreated(model: Model): number {
   return Math.min(...candidates);
 }
 
+/** Whether a model is paid for by the token. One that only makes images is paid for by the image:
+ *  its token rates are 0, and that 0 is not its price. */
+const byToken = (model: Model) => {
+  const gives = model.architecture?.output_modalities ?? [];
+  return !gives.includes("image") || gives.includes("text");
+};
+
 /** Where the nodes apps can use stand on price for one model: a tick per node, the one apps pick
  *  in gold, and OpenRouter's price as a dashed mark. `against` is the picked node's price over OpenRouter's. */
 function Lane({ sellers, against }: { sellers: readonly Offer[]; against: number | null }) {
@@ -104,6 +111,8 @@ function Lane({ sellers, against }: { sellers: readonly Offer[]; against: number
     node.approved && node.route && node.cost !== null ? [{ node, cost: node.cost }] : []
   );
   const best = nodes.at(0);
+  // a free node has no place on a scale of prices: with one in front there is nothing to draw
+  if (best?.cost === 0) return null;
   // OpenRouter's price, in the sats the picked node would ask for it
   const listed = best && against ? best.cost / against : null;
   const costs = [...nodes.map(({ cost }) => cost), ...(listed ? [listed] : [])];
@@ -228,8 +237,9 @@ export default function ModelsPage() {
       }
     }
     return Array.from(byKey.values(), (entry) => {
-      // a request for this id reaches a node that serves it under this id, for a price in sats
-      const route = (seller: Seller) => seller.as === entry.id && seller.cost !== null && seller.cost > 0;
+      // a request for this id reaches a node that serves it under this id, for a price in sats.
+      // A price of 0 is a price: apps count a free node as the cheapest (the SDK's own rule, and Prices').
+      const route = (seller: Seller) => seller.as === entry.id && seller.cost !== null;
       const cost = (seller: Seller) => (route(seller) && seller.cost !== null ? seller.cost : Infinity);
       // one line per node. Where a node lists the model twice, apps take the one under this very id.
       const perNode = new Map<string, Seller>();
@@ -260,7 +270,7 @@ export default function ModelsPage() {
       const counted = new Set([entry.id, ...entry.sellers.map((seller) => seller.model.id)].map(usageKey));
       const requests = Array.from(counted).reduce((sum, key) => sum + (usage.requests?.[key] ?? 0), 0);
       // the node apps pick, against OpenRouter, both in USD for the same request
-      const mine = cheapest.approved && cheapest.route ? requestCost(cheapest.usd) : null;
+      const mine = cheapest.approved && cheapest.route && byToken(cheapest.model) ? requestCost(cheapest.usd) : null;
       const theirs = requestCost(list.prices.get(entry.id));
       return {
         ...entry,
@@ -269,7 +279,9 @@ export default function ModelsPage() {
         sellers,
         name: names[0] ?? entry.id,
         company: companyIn(entry.spellings.join(" ")),
-        against: mine && theirs ? mine / theirs : null,
+        against: mine !== null && theirs ? mine / theirs : null,
+        // the node apps pick asks nothing for it
+        free: cheapest.route && cheapest.cost === 0 && byToken(cheapest.model),
         score: list.scores.get(entry.id) ?? null,
         thinks: entry.sellers.some((seller) => seller.model.reasons),
         requests,
@@ -280,8 +292,8 @@ export default function ModelsPage() {
     });
   }, [nodes, mappings, labels, list, usage.requests]);
 
-  // going up in price, a model with no price comes last, not first
-  const asked = (value: number) => (value > 0 || sortConfig.direction === "desc" ? value : Infinity);
+  // going up in price, a model with no price comes last, not first; a free one is first
+  const asked = (free: boolean, value: number) => (value > 0 || free || sortConfig.direction === "desc" ? value : Infinity);
   const needle = searchTerm.trim().toLowerCase();
 
   const does = (entry: (typeof entries)[number], which: Kind) => {
@@ -351,10 +363,10 @@ export default function ModelsPage() {
           comparison = a.context - b.context;
           break;
         case "input":
-          comparison = asked(rates(a).prompt) - asked(rates(b).prompt) || 0;
+          comparison = asked(a.free, rates(a).prompt) - asked(b.free, rates(b).prompt) || 0;
           break;
         case "output":
-          comparison = asked(rates(a).completion) - asked(rates(b).completion) || 0;
+          comparison = asked(a.free, rates(a).completion) - asked(b.free, rates(b).completion) || 0;
           break;
         case "used":
           // the most used first; among the unused, the newest
@@ -449,9 +461,12 @@ export default function ModelsPage() {
   // the list is long: it shows its first rows, and more only when asked
   const left = filteredModels.length - shown;
 
-  const price = (value: number) =>
+  /** A rate for a million tokens. Nothing is a dash, unless the node is known to ask nothing: then it is 0. */
+  const price = (value: number, free = false) =>
     !(value > 0)
-      ? "—"
+      ? free
+        ? "0"
+        : "—"
       : value * 1_000_000 < 0.005
         ? "<0.01"
         : currency === "sats"
@@ -756,8 +771,8 @@ export default function ModelsPage() {
                               ? "—"
                               : "·"}
                     </span>
-                    <span className="pg-num pg-end">{price(sats ? entry.sats.prompt : entry.usd.prompt)}</span>
-                    <span className="pg-num pg-end">{price(sats ? entry.sats.completion : entry.usd.completion)}</span>
+                    <span className="pg-num pg-end">{price(sats ? entry.sats.prompt : entry.usd.prompt, entry.free)}</span>
+                    <span className="pg-num pg-end">{price(sats ? entry.sats.completion : entry.usd.completion, entry.free)}</span>
                     <span
                       className="pg-num pg-end pg-hide"
                       data-quiet
@@ -847,8 +862,8 @@ export default function ModelsPage() {
                       {node.name}
                       {!node.approved && <i>not approved</i>}
                     </Link>
-                    <span>{price(sats ? node.sats.prompt : node.usd.prompt)}</span>
-                    <span>{price(sats ? node.sats.completion : node.usd.completion)}</span>
+                    <span>{price(sats ? node.sats.prompt : node.usd.prompt, node.route && node.cost === 0 && byToken(node.model))}</span>
+                    <span>{price(sats ? node.sats.completion : node.usd.completion, node.route && node.cost === 0 && byToken(node.model))}</span>
                   </li>
                 ))}
               </ul>

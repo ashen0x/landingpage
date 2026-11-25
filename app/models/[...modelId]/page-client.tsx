@@ -10,7 +10,7 @@ import { Mark } from "@/components/layout/Mark";
 import { Kinds } from "@/components/layout/Kinds";
 import { companyIn } from "@/components/stats/model-company-icon";
 import { ModelReviews } from "@/components/ModelReviews";
-import { Provider, getModelNameWithoutProvider } from "@/app/data/models";
+import { Model, Provider, getModelNameWithoutProvider } from "@/app/data/models";
 import { useNodeLists } from "@/lib/use-node-lists";
 import { usePricingView } from "@/app/contexts/PricingContext";
 import { fetchListPrices, fetchReviewLabels } from "@/lib/api/price-sources";
@@ -92,7 +92,7 @@ export default function ModelDetailPage() {
         const aUnknown = isUnknownProviderName(a.provider.name);
         const bUnknown = isUnknownProviderName(b.provider.name);
         if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
-        const cost = (entry: (typeof a)) => (entry.model.sats_unpriced ? null : requestCost(entry.model.sats_pricing)) || Infinity;
+        const cost = (entry: (typeof a)) => (entry.model.sats_unpriced ? null : requestCost(entry.model.sats_pricing)) ?? Infinity;
         return cost(a) - cost(b) || 0;
       });
   }, [nodes, sold]);
@@ -150,9 +150,18 @@ export default function ModelDetailPage() {
   }
 
   const sats = currency === "sats";
-  const price = (value: number | undefined) =>
+  /** A node that asks nothing for a request: a price of 0 is a price, as apps count it. */
+  // (a model that only makes images is paid for by the image: its token rates of 0 are not its price)
+  const byToken = (one: Model) => {
+    const made = one.architecture?.output_modalities ?? [];
+    return !made.includes("image") || made.includes("text");
+  };
+  const freeAt = (one: Model) => !one.sats_unpriced && byToken(one) && requestCost(one.sats_pricing) === 0;
+  const price = (value: number | undefined, free = false) =>
     !value || !(value > 0)
-      ? "—"
+      ? free
+        ? "0"
+        : "—"
       : value * 1_000_000 < 0.005
         ? "<0.01"
         : formatCompactPriceValue(value * 1_000_000, { fixedSmallDecimals: !sats });
@@ -188,7 +197,8 @@ export default function ModelDetailPage() {
   const mine = selected ? requestCost(selected.model.pricing) : null;
   const theirs = requestCost(listPrices.get(model.id));
   // a price above zero never reads as 100% under
-  const against = mine && theirs ? Math.max(-99, Math.round((mine / theirs - 1) * 100)) : null;
+  const against =
+    mine !== null && theirs && selected && byToken(selected.model) ? Math.max(-99, Math.round((mine / theirs - 1) * 100)) : null;
 
   return (
     <SiteShell>
@@ -293,8 +303,8 @@ export default function ModelDetailPage() {
                     {entry.provider.name}
                     {reviewed && !approved(entry.provider) && <i>not approved</i>}
                   </span>
-                  <span>{price(sats ? entry.model.sats_pricing?.prompt : entry.model.pricing?.prompt)}</span>
-                  <span>{price(sats ? entry.model.sats_pricing?.completion : entry.model.pricing?.completion)}</span>
+                  <span>{price(sats ? entry.model.sats_pricing?.prompt : entry.model.pricing?.prompt, freeAt(entry.model))}</span>
+                  <span>{price(sats ? entry.model.sats_pricing?.completion : entry.model.pricing?.completion, freeAt(entry.model))}</span>
                 </button>
               ))}
             </div>
@@ -308,11 +318,11 @@ export default function ModelDetailPage() {
                 <b>{selected.provider.name}</b>
                 <dl>
                   <div>
-                    <dd>{price(sats ? selected.model.sats_pricing?.prompt : selected.model.pricing?.prompt)}</dd>
+                    <dd>{price(sats ? selected.model.sats_pricing?.prompt : selected.model.pricing?.prompt, freeAt(selected.model))}</dd>
                     <dt>input</dt>
                   </div>
                   <div>
-                    <dd>{price(sats ? selected.model.sats_pricing?.completion : selected.model.pricing?.completion)}</dd>
+                    <dd>{price(sats ? selected.model.sats_pricing?.completion : selected.model.pricing?.completion, freeAt(selected.model))}</dd>
                     <dt>output</dt>
                   </div>
                   {against !== null && (
