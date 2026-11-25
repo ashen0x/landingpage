@@ -103,7 +103,8 @@ export default function ProvidersPage() {
         (line.web ?? "").toLowerCase().includes(needle) ||
         line.provider.pubkey.toLowerCase().includes(needle))
   );
-  const open = shown.find((line) => line.provider.pubkey === picked) ?? shown[0];
+  // the picked node, also one that lists no models right now; with none picked, the first in the list
+  const open = lines.find((line) => line.provider.pubkey === picked) ?? shown[0];
   // the node a link asked for is brought into sight once, when its row is there
   useEffect(() => {
     if (!asked.current || !shown.some((line) => line.provider.pubkey === asked.current)) return;
