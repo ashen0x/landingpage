@@ -418,6 +418,7 @@ function tally(metrics: StatsDay[], split: Split, open?: Map<string, boolean>) {
     totals.tokens += whole[2];
     totals.bars[index] = whole;
     const names = Array.from(new Set([...Object.keys(bar.model_counts ?? {}), ...Object.keys(bar.model_revenue_msats ?? {}), ...Object.keys(bar.model_tokens ?? {})]));
+    const named = [0, 0, 0];
     for (const name of names) {
       const model = family(usageKey(name));
       if (!model || model === "unknown") continue;
@@ -431,9 +432,22 @@ function tally(metrics: StatsDay[], split: Split, open?: Map<string, boolean>) {
       row.requests += values[0];
       row.sats += values[1];
       row.tokens += values[2];
-      values.forEach((value, at) => (row.bars[index][at] += value));
+      values.forEach((value, at) => {
+        row.bars[index][at] += value;
+        named[at] += value;
+      });
       rows.set(key, row);
       if (split !== "open") marks.set(key, company);
+    }
+    // open or closed is said of all use: what names no model is not known, so the parts add up to the day
+    const rest = whole.map((value, at) => Math.max(0, value - named[at]));
+    if (split === "open" && rest.some((value) => value > 0)) {
+      const row = rows.get(KINDS.unknown) ?? empty(metrics.length);
+      row.requests += rest[0];
+      row.sats += rest[1];
+      row.tokens += rest[2];
+      rest.forEach((value, at) => (row.bars[index][at] += value));
+      rows.set(KINDS.unknown, row);
     }
   });
   return { rows, totals, marks };
