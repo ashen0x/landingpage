@@ -338,3 +338,8 @@
   align-items: center;
   gap: 4px 16px;
 }
+
+/* while the nodes are asked the page is already a screen tall, so the footer does not show and then jump away */
+.pg.md {
+  min-height: 100svh;
+}
