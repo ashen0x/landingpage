@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -10,8 +10,8 @@ import { Mark } from "@/components/layout/Mark";
 import { Kinds } from "@/components/layout/Kinds";
 import { companyIn } from "@/components/stats/model-company-icon";
 import { ModelReviews } from "@/components/ModelReviews";
-import { Model, Provider, getModelNameWithoutProvider, fetchModels as fetchModelsDirect } from "@/app/data/models";
-import { useModels } from "@/app/contexts/ModelsContext";
+import { Provider, getModelNameWithoutProvider } from "@/app/data/models";
+import { useNodeLists } from "@/lib/use-node-lists";
 import { usePricingView } from "@/app/contexts/PricingContext";
 import { fetchListPrices, fetchReviewLabels } from "@/lib/api/price-sources";
 import { isApproved, requestCost, type TokenRates } from "@/lib/price-radar";
@@ -35,18 +35,16 @@ function isUnknownProviderName(name: string | null | undefined): boolean {
 export default function ModelDetailPage() {
   const params = useParams();
   const { currency, setCurrency } = usePricingView();
-  const { loading, error, findModel } = useModels();
-  const [providersWithPricing, setProvidersWithPricing] = useState<{ provider: Provider; model: Model }[]>([]);
+  /* Every node's own list, from the loader the other pages share: asked once, and the lists of
+     the last visit show at once. */
+  const { nodes, loading: pricingLoading } = useNodeLists();
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
-  const [pricingLoading, setPricingLoading] = useState(true);
 
   const modelIdParts = params.modelId as string[];
   const decodedModelIdParts = decodeSegments(modelIdParts);
   const decodedModelId = decodedModelIdParts.join("/");
 
   const [activeTab, setActiveTab] = useState<CodeLanguage>("curl");
-  const [model, setModel] = useState<Model | null>(null);
-  const [notFound, setNotFound] = useState(false);
   const [tokenInput, setTokenInput] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
   const [descExpanded, setDescExpanded] = useState<boolean>(false);
@@ -64,7 +62,28 @@ export default function ModelDetailPage() {
     };
   }, []);
 
-  // approved nodes first: that is where apps send a request. Within each, the loading order (by cost) holds.
+  // every node whose list has this model, once each: named nodes first, then by what a request costs
+  const providersWithPricing = useMemo(() => {
+    const seen = new Set<string>();
+    return nodes
+      .flatMap(({ provider, models }) => {
+        const found = models.find((m) => m.id === decodedModelId);
+        if (!found || seen.has(provider.id)) return [];
+        seen.add(provider.id);
+        return [{ provider, model: found }];
+      })
+      .sort((a, b) => {
+        const aUnknown = isUnknownProviderName(a.provider.name);
+        const bUnknown = isUnknownProviderName(b.provider.name);
+        if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
+        const cost = (entry: (typeof a)) => (entry.model.sats_unpriced ? null : requestCost(entry.model.sats_pricing)) || Infinity;
+        return cost(a) - cost(b) || 0;
+      });
+  }, [nodes, decodedModelId]);
+  const model = providersWithPricing[0]?.model ?? null;
+  const notFound = !pricingLoading && !model;
+
+  // approved nodes first: that is where apps send a request. Within each, the order above (by cost) holds.
   const place = (url: string) => url.trim().replace(/\/+$/, "").toLowerCase();
   const approved = (provider: Provider) =>
     labels.size === 0 ||
@@ -84,64 +103,12 @@ export default function ModelDetailPage() {
     } catch {}
   }, [storageBaseUrl]);
 
-  useEffect(() => {
-    let active = true;
-    async function loadModelData() {
-      setPricingLoading(true);
-      try {
-        const foundModel = findModel(decodedModelId);
-        if (foundModel) {
-          setModel(foundModel);
-          setNotFound(false);
-        }
-
-        await fetchModelsDirect((provider, newlyFetchedModels) => {
-          if (!active) return;
-          const modelInProvider = newlyFetchedModels.find((m) => m.id === decodedModelId);
-
-          if (modelInProvider) {
-            setModel((prev) => prev || modelInProvider);
-            setNotFound(false);
-            setProvidersWithPricing((prev) => {
-              if (prev.some((p) => p.provider.id === provider.id)) return prev;
-              const newEntry = { provider, model: modelInProvider };
-              const next = [...prev, newEntry];
-              return next.sort((a, b) => {
-                const aUnknown = isUnknownProviderName(a.provider.name);
-                const bUnknown = isUnknownProviderName(b.provider.name);
-                if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
-                const cost = (entry: { model: Model }) =>
-                  (entry.model.sats_unpriced ? null : requestCost(entry.model.sats_pricing)) || Infinity;
-                return cost(a) - cost(b) || 0;
-              });
-            });
-          }
-        });
-
-        setModel((prev) => {
-          if (!prev && active) setNotFound(true);
-          return prev;
-        });
-      } catch (error) {
-        console.error("Error loading model data:", error);
-        setModel((prev) => {
-          if (!prev && active) setNotFound(true);
-          return prev;
-        });
-      } finally {
-        if (active) setPricingLoading(false);
-      }
-    }
-    loadModelData();
-    return () => { active = false; };
-  }, [decodedModelId, findModel]);
-
-  if (error || notFound) {
+  if (notFound) {
     return (
       <SiteShell>
         <section className="pg md">
-          <h1>{error ? "Something went wrong" : "No such model"}</h1>
-          <p className="pg-lede">{error || "No node sells a model under this name right now."}</p>
+          <h1>No such model</h1>
+          <p className="pg-lede">No node sells a model under this name right now.</p>
           <Link href="/models" className="pg-more">
             All models <ArrowRight strokeWidth={1.5} aria-hidden="true" />
           </Link>
@@ -153,7 +120,7 @@ export default function ModelDetailPage() {
     return (
       <SiteShell>
         <section className="pg md">
-          <p className="pg-lede">{loading || pricingLoading ? "Asking the nodes about this model." : ""}</p>
+          <p className="pg-lede">Asking the nodes about this model.</p>
         </section>
       </SiteShell>
     );

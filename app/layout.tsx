@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { ModelsProvider } from "./contexts/ModelsContext";
 import { NostrProvider } from "@/context/NostrContext";
 import { PricingProvider } from "./contexts/PricingContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -82,11 +81,9 @@ export default function RootLayout({
         className="antialiased min-h-screen bg-background text-muted-foreground selection:bg-foreground/20 selection:text-foreground"
       >
         <ThemeProvider>
-          <ModelsProvider>
-            <NostrProvider>
-              <PricingProvider>{children}</PricingProvider>
-            </NostrProvider>
-          </ModelsProvider>
+          <NostrProvider>
+            <PricingProvider>{children}</PricingProvider>
+          </NostrProvider>
         </ThemeProvider>
       </body>
     </html>
