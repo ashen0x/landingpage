@@ -1,0 +1,506 @@
+/* Top-up: the node and key side by side, the balance large under them, then adding
+   or taking out sats beside the card that shows the invoice, the new key or the token. */
+
+/* the kit's faintest grey is too pale to read as text: on this page every word people
+   read is at least --dim */
+.pg.tu {
+  --faint: var(--dim);
+}
+.tu button:disabled {
+  cursor: default;
+}
+
+/* ── the node and the key ───────────────────────────────────────────────── */
+
+.tu-tools {
+  /* above the lines after it, so the list of nodes opens over them */
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  max-width: 56rem;
+  margin-top: clamp(34px, 6vh, 60px);
+  animation: pg-in 1000ms ease 480ms both;
+}
+@media (min-width: 760px) {
+  .tu-tools {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+}
+.tu-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background) 62%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  backdrop-filter: blur(18px);
+  transition: box-shadow 260ms;
+}
+.tu-field:focus-within {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 42%, transparent);
+}
+.tu-field small {
+  flex: none;
+  width: 4.4rem;
+  padding-left: 18px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.tu-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  outline: none;
+}
+.tu-field input:focus-visible {
+  outline: none;
+}
+.tu-field input::placeholder {
+  color: var(--faint);
+  font-weight: 400;
+}
+.tu-field em {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  margin-left: 8px;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 14px;
+  font-style: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tu-field > button {
+  flex: none;
+  margin-right: 8px;
+  padding: 8px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 200ms;
+}
+.tu-field > button:hover {
+  color: var(--ink);
+}
+.tu-field > svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0 18px 0 10px;
+  color: var(--faint);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  transition: transform 260ms var(--out);
+}
+.tu-node[data-open] > svg {
+  transform: rotate(180deg);
+}
+.tu-node[data-open] {
+  z-index: 3;
+}
+/* the list of nodes opens under the field, over what is below it */
+.tu-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  max-height: min(340px, 52vh);
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background) 94%, var(--foreground));
+  box-shadow:
+    inset 0 0 0 1px var(--hair),
+    0 24px 48px -24px rgb(0 0 0 / 0.45);
+  list-style: none;
+  overscroll-behavior: contain;
+}
+.tu-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.tu-list li[data-active] {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+.tu-list b {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tu-list li[aria-selected="true"] {
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+.tu-list span {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 13.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tu-list .tu-none {
+  color: var(--faint);
+  cursor: default;
+}
+.tu-note {
+  margin: 10px 2px 0;
+  color: var(--faint);
+  font-size: 13.5px;
+  animation: pg-in 1000ms ease 520ms both;
+}
+
+/* ── the balance ────────────────────────────────────────────────────────── */
+
+.tu-bal {
+  --big: clamp(3.2rem, 6.6vw, 5.6rem);
+  margin-top: clamp(40px, 7vh, 72px);
+  animation: pg-in 1000ms ease 560ms both;
+}
+.tu-bal strong {
+  display: flex;
+  align-items: flex-end;
+  height: calc(var(--big) * 0.9);
+  color: var(--ink);
+  font-size: var(--big);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tu-bal strong u {
+  margin-left: 0.14em;
+  color: var(--dim);
+  font-size: 0.36em;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+/* words in place of the number: smaller, on the same line */
+.tu-bal strong[data-word] {
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  letter-spacing: -0.04em;
+}
+.tu-bal strong[data-wait] {
+  color: var(--faint);
+}
+/* lines tall enough that the buttons in them are easy to tap */
+.tu-bal p {
+  min-height: 26px;
+  margin: 14px 0 0;
+  color: var(--faint);
+  font-size: 14.5px;
+  line-height: 26px;
+}
+.tu-bal p b {
+  color: var(--dim);
+  font-weight: 400;
+}
+/* what an app needs from this page: the key and the address to send it to */
+.tu-use {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-left: 18px;
+}
+.tu-bal p button,
+.tu-alt button {
+  color: var(--ink);
+  box-shadow: 0 1px 0 var(--hair);
+  transition: box-shadow 200ms;
+}
+.tu-bal p button:hover,
+.tu-alt button:hover {
+  box-shadow: 0 1px 0 var(--ink);
+}
+/* a link inside a sentence is underlined, not only lighter */
+.tu-bal p a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  text-underline-offset: 4px;
+  transition: text-decoration-color 200ms;
+}
+.tu-bal p a:hover {
+  text-decoration-color: var(--ink);
+}
+
+/* ── adding and taking out, beside the card ─────────────────────────────── */
+
+.tu-act {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 64px);
+  max-width: 72rem;
+  margin-top: clamp(28px, 5vh, 48px);
+  padding-top: 26px;
+  box-shadow: inset 0 1px 0 var(--hair);
+  animation: pg-in 1000ms ease 640ms both;
+}
+@media (min-width: 900px) {
+  .tu-act {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.tu .tu-amounts {
+  /* four amounts wrap on a phone, where the page kit's chips scroll sideways */
+  flex-wrap: wrap;
+  max-width: none;
+  margin: 22px 0 0;
+  padding: 0;
+  overflow: visible;
+}
+.tu-amounts button,
+.tu-other {
+  height: 42px;
+  padding: 0 18px;
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+}
+.tu-other {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.tu-other input {
+  width: 5.5em;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+}
+.tu-other input::placeholder {
+  color: var(--faint);
+}
+.tu-other i {
+  color: var(--faint);
+  font-style: normal;
+}
+.tu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 54px;
+  margin-top: 26px;
+  padding: 0 8px 0 26px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--background);
+  font-size: 16px;
+  font-weight: 500;
+  transition:
+    opacity 260ms,
+    transform 260ms var(--out);
+}
+.tu-btn:not(:disabled):hover {
+  transform: translateX(2px);
+}
+.tu-btn:disabled {
+  opacity: 0.35;
+}
+.tu-btn svg {
+  box-sizing: content-box;
+  width: 16px;
+  height: 16px;
+  padding: 11px;
+  border-radius: 50%;
+  background: var(--background);
+  color: var(--ink);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.tu-quiet {
+  margin-top: 12px;
+  background: none;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+.tu-quiet svg {
+  background: var(--ink);
+  color: var(--background);
+}
+.tu-alt {
+  margin: 20px 0 0;
+  color: var(--faint);
+  font-size: 14px;
+  line-height: 26px;
+}
+.tu-alt button:disabled {
+  color: var(--faint);
+}
+.tu-paste {
+  margin-top: 14px;
+}
+.tu-paste textarea {
+  display: block;
+  width: 100%;
+  max-width: 32rem;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background) 62%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-all;
+  resize: vertical;
+  outline: none;
+}
+.tu-paste textarea:focus {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 42%, transparent);
+}
+.tu-to {
+  max-width: 32rem;
+  margin-top: 22px;
+}
+.tu-to small {
+  width: 3.4rem;
+}
+.tu-say {
+  min-height: 1.5em;
+  margin: 16px 0 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+/* the card: what the node gave back, or what will happen */
+.tu-card {
+  display: grid;
+  align-content: center;
+  gap: 24px;
+  min-height: 218px;
+  padding: 20px 24px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+.tu-card[data-qr] {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding-left: 20px;
+}
+.tu-qr {
+  display: block;
+  justify-self: start;
+  width: 178px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+}
+.tu-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.tu-card h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.tu-card h2 i {
+  /* a touch deeper than the brand gold, so it reads on the light page too */
+  color: color-mix(in srgb, var(--gold) 90%, var(--foreground));
+  font-style: normal;
+}
+.tu-card p {
+  margin: 10px 0 0;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.tu-card code {
+  display: block;
+  margin-top: 14px;
+  overflow: hidden;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* a new key is shown whole: it is read once and saved */
+.tu-card code[data-key] {
+  color: var(--ink);
+  font-size: 12.5px;
+  white-space: normal;
+  word-break: break-all;
+}
+.tu-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 26px;
+}
+.tu-acts a,
+.tu-acts button {
+  color: var(--ink);
+  box-shadow: 0 1px 0 var(--hair);
+  transition: box-shadow 200ms;
+}
+.tu-acts a:hover,
+.tu-acts button:hover {
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+@media (max-width: 759px) {
+  .tu-field small {
+    width: 3.8rem;
+  }
+  .tu-field em {
+    display: none;
+  }
+  .tu-card {
+    min-height: 168px;
+  }
+  .tu-card[data-qr] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .tu-qr {
+    width: 168px;
+    padding: 8px;
+  }
+  .tu-bal p {
+    min-height: 52px;
+  }
+  .tu-use {
+    display: flex;
+    margin: 0;
+  }
+}
