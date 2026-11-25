@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import "./code-panel.css";
 
 /** A line of a terminal: the prompt ("$" or none), the command, and a note after it. */
 export type Line = readonly [prompt: string, text: string, note?: string];

@@ -475,117 +475,6 @@
   display: inline-block;
   margin-top: clamp(20px, 3vh, 30px);
 }
-/* a panel of commands, or a terminal */
-.rd-code {
-  overflow: hidden;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--background) 72%, transparent);
-  box-shadow: inset 0 0 0 1px var(--hair), 0 40px 80px -40px rgb(0 0 0 / 0.5);
-}
-.rd-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 44px;
-  padding: 0 8px 0 6px;
-  box-shadow: inset 0 -1px 0 var(--hair);
-  font-size: 13.5px;
-}
-/* tabs that do not fit run on under the edge; the fade, over a gap of its own, says there are more */
-.rd-bar [role="tablist"] {
-  display: flex;
-  min-width: 0;
-  height: 100%;
-  padding-right: 24px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
-  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
-}
-.rd-bar [role="tablist"]::-webkit-scrollbar {
-  display: none;
-}
-.rd-bar button {
-  position: relative;
-  flex: none;
-  height: 100%;
-  padding: 0 13px;
-  color: var(--faint);
-  white-space: nowrap;
-  transition: color 200ms;
-}
-.rd-bar [role="tab"]::after {
-  content: "";
-  position: absolute;
-  right: 13px;
-  bottom: 0;
-  left: 13px;
-  height: 1px;
-  background: var(--gold);
-  transform: scaleX(0);
-  transition: transform 420ms var(--out);
-}
-.rd-bar button:hover,
-.rd-bar [aria-selected="true"] {
-  color: var(--ink);
-}
-.rd-bar [aria-selected="true"]::after {
-  transform: scaleX(1);
-}
-.rd-bar :focus-visible {
-  outline-offset: -6px;
-}
-.rd-copy {
-  flex: none;
-  color: var(--faint);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.rd-bar .rd-copy {
-  padding: 0 8px;
-}
-.rd-code-body {
-  display: grid;
-}
-.rd-code pre {
-  grid-area: 1 / 1;
-  min-width: 0;
-  margin: 0;
-  padding: 18px 22px 20px;
-  overflow-x: auto;
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 12.5px;
-  line-height: 1.85;
-  scrollbar-width: none;
-}
-.rd-code-body pre {
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 160ms, visibility 0s 160ms;
-}
-.rd-code-body pre[data-on] {
-  visibility: visible;
-  opacity: 1;
-  transition: opacity 160ms;
-}
-.rd-code pre i {
-  color: var(--gold);
-  font-style: normal;
-}
-.rd-code pre em {
-  color: var(--faint);
-  font-style: normal;
-}
-.rd-under {
-  margin: 14px 2px 0;
-  color: var(--faint);
-  font-size: 13.5px;
-}
-
 /* routstrd top: 100 columns set to fill the window, or on a narrow one run on under the edge */
 .rd-top [role="tab"] i {
   margin-right: 6px;
@@ -723,13 +612,6 @@
   .rd-steps li {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
-  }
-  /* long lines run on under the edge; the fade says there is more */
-  .rd-code-body pre {
-    padding: 16px 16px 18px;
-    font-size: 12px;
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
   }
   .rd-screen {
     padding: 14px 12px 16px;

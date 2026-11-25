@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import "./code-panel.css";
 /* Each tab of `routstrd top`, drawn by routstrd's own code (v0.5.1, src/tui/usage/render.ts)
    for a made-up month of use: Claude Code on Claude Opus and Sonnet, OpenCode on DeepSeek,
    Pi on GPT-6 Luna, each at the price the cheapest approved node asked on 17 Nov, on made-up
