@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { fetchModels, type Model, type Provider } from "@/app/data/models";
 import { initialProviderDiscovery, type ProviderDiscoveryProgress } from "@/lib/api/providers";
 
@@ -47,6 +47,68 @@ async function save(nodes: NodeList[]) {
   }
 }
 
+/** The nodes are asked again when a page opens and the last answers are older than this. */
+const ASK_AGAIN_MS = 5 * 60_000;
+
+type Lists = { nodes: NodeList[]; loading: boolean; discovery: ProviderDiscoveryProgress };
+
+/* One pass over the nodes serves every page of a visit: the answers live here, outside any page,
+   so moving from one page to the next asks no node again. */
+const NOTHING: Lists = { nodes: [], loading: true, discovery: initialProviderDiscovery() };
+let lists = NOTHING;
+let asking = false;
+let askedAt = 0;
+const watchers = new Set<() => void>();
+function set(change: Partial<Lists>) {
+  lists = { ...lists, ...change };
+  watchers.forEach((tell) => tell());
+}
+function watch(tell: () => void) {
+  watchers.add(tell);
+  return () => {
+    watchers.delete(tell);
+  };
+}
+
+async function ask() {
+  asking = true;
+  try {
+    // lists already shown (an earlier pass, or the last visit's) stay until the new ones are complete
+    const kept = lists.nodes.length > 0 ? lists.nodes : await readSaved();
+    if (kept && lists.nodes.length === 0) set({ nodes: kept, loading: false });
+    const all: NodeList[] = [];
+    let waiting: NodeList[] = [];
+    let timer = 0;
+    const handOver = () => {
+      timer = 0;
+      const arrived = waiting;
+      waiting = [];
+      if (arrived.length === 0) return;
+      const keys = new Set(arrived.map((node) => node.provider.pubkey));
+      set({ nodes: [...lists.nodes.filter((node) => !keys.has(node.provider.pubkey)), ...arrived] });
+    };
+    await fetchModels((provider, models) => {
+      const answer = { provider, models };
+      all.push(answer);
+      // with lists on the page, the new ones wait until they are complete
+      if (kept) return;
+      waiting = [...waiting.filter((node) => node.provider.pubkey !== provider.pubkey), answer];
+      if (!timer) timer = window.setTimeout(handOver, HAND_OVER_MS);
+    }, (progress) => set({ discovery: progress }));
+    window.clearTimeout(timer);
+    handOver();
+    // one answer per node, the last one given
+    const latest = Array.from(new Map(all.map((node) => [node.provider.pubkey, node])).values());
+    const answered = latest.some((node) => node.models.length > 0);
+    if (kept && answered) set({ nodes: latest });
+    if (answered) void save(latest);
+  } finally {
+    set({ loading: false });
+    askedAt = Date.now();
+    asking = false;
+  }
+}
+
 /**
  * Every node's own model list.
  *
@@ -56,56 +118,9 @@ async function save(nodes: NodeList[]) {
  * show at once, and the new ones replace them in one step when all nodes have
  * answered.
  */
-export function useNodeLists(): { nodes: NodeList[]; loading: boolean; discovery: ProviderDiscoveryProgress } {
-  const [nodes, setNodes] = useState<NodeList[]>([]);
-  const [loading, setLoading] = useState(true);
-  // how many nodes the search has found so far, and which relays have answered it
-  const [discovery, setDiscovery] = useState(initialProviderDiscovery);
+export function useNodeLists(): Lists {
   useEffect(() => {
-    let active = true;
-    let timer = 0;
-    void (async () => {
-      const saved = await readSaved();
-      if (!active) return;
-      if (saved) {
-        setNodes(saved);
-        setLoading(false);
-      }
-      const all: NodeList[] = [];
-      let waiting: NodeList[] = [];
-      const handOver = () => {
-        timer = 0;
-        const arrived = waiting;
-        waiting = [];
-        if (!active || arrived.length === 0) return;
-        setNodes((prev) => {
-          const keys = new Set(arrived.map((node) => node.provider.pubkey));
-          return [...prev.filter((node) => !keys.has(node.provider.pubkey)), ...arrived];
-        });
-      };
-      await fetchModels((provider, models) => {
-        const answer = { provider, models };
-        all.push(answer);
-        // with saved lists on the page, the new ones wait until they are complete
-        if (saved) return;
-        waiting = [...waiting.filter((node) => node.provider.pubkey !== provider.pubkey), answer];
-        if (!timer) timer = window.setTimeout(handOver, HAND_OVER_MS);
-      }, (progress) => {
-        if (active) setDiscovery(progress);
-      });
-      window.clearTimeout(timer);
-      handOver();
-      // one answer per node, the last one given
-      const latest = Array.from(new Map(all.map((node) => [node.provider.pubkey, node])).values());
-      const answered = latest.some((node) => node.models.length > 0);
-      if (active && saved && answered) setNodes(latest);
-      if (active) setLoading(false);
-      if (answered) void save(latest);
-    })();
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
+    if (!asking && Date.now() - askedAt > ASK_AGAIN_MS) void ask();
   }, []);
-  return { nodes, loading, discovery };
+  return useSyncExternalStore(watch, () => lists, () => NOTHING);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchModels, type Model, type Provider } from "@/app/data/models";
+import { useNodeLists } from "@/lib/use-node-lists";
 import { fetchModelIdMappings, fetchReviewLabels } from "@/lib/api/price-sources";
 import {
   buildRadar,
@@ -10,8 +10,6 @@ import {
   type RadarNode,
   type RadarRow,
 } from "@/lib/price-radar";
-
-type LoadedNode = { provider: Provider; models: Model[] };
 
 export interface Market {
   /** One row per model, its nodes in the order apps try them. */
@@ -32,8 +30,7 @@ const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, "").toLowerCase
  * Rows fill in as nodes answer.
  */
 export function useMarket(): Market {
-  const [nodes, setNodes] = useState<LoadedNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { nodes, loading } = useNodeLists();
   const [labels, setLabels] = useState<Map<string, string> | null>(null);
   const [mappings, setMappings] = useState<ModelIdMappings | null>(null);
 
@@ -41,13 +38,6 @@ export function useMarket(): Market {
     let active = true;
     void fetchReviewLabels().then((found) => active && setLabels(found));
     void fetchModelIdMappings().then((found) => active && setMappings(found));
-    void fetchModels((provider, models) => {
-      if (!active) return;
-      setNodes((prev) => [
-        ...prev.filter((node) => node.provider.pubkey !== provider.pubkey),
-        { provider, models },
-      ]);
-    }).finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
