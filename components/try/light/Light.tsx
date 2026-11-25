@@ -683,7 +683,7 @@ export function Light() {
               <ul className="lt-tools" onPointerLeave={() => engine.current?.choose(null)}>
                 {tools.map((tool, i) => (
                   <li key={tool.name}>
-                    <a
+                    <Link
                       href={tool.href}
                       onPointerEnter={() => engine.current?.choose(i)}
                       onFocus={() => engine.current?.choose(i)}
@@ -692,7 +692,7 @@ export function Light() {
                       <b>{tool.name}</b>
                       <span>{tool.line}</span>
                       <Arrow />
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
