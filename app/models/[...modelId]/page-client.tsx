@@ -160,7 +160,7 @@ export default function ModelDetailPage() {
     ? selected.provider.endpoint_url.endsWith("/v1")
       ? selected.provider.endpoint_url
       : `${selected.provider.endpoint_url.replace(/\/$/, "")}/v1`
-    : "https://api.routstr.com/v1";
+    : "https://node.example.com/v1";
   const name = getModelNameWithoutProvider(model.name);
   const token = tokenInput.trim() || "YOUR_TOKEN";
   const code: Record<CodeLanguage, string> = {
