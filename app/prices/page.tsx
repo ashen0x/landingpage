@@ -505,7 +505,11 @@ export default function PricesPage() {
                   }}
                 />
                 {search ? (
-                  <button type="button" onClick={showAll}>
+                  <button type="button" onClick={() => {
+                      setSearch("");
+                      setShown(FIRST_ROWS);
+                      writeUrl(myNode, "");
+                    }}>
                     Clear
                   </button>
                 ) : (
