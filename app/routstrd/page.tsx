@@ -7,7 +7,7 @@ import "@/components/layout/pages.css";
 import "./routstrd.css";
 
 const GITHUB = "https://github.com/Routstr/routstrd";
-const AUTH = "https://github.com/Routstr/routstrd-auth";
+const REMOTE = "https://github.com/Routstr/routstrd-remote";
 
 const installer: Example["lines"] = [
   ["$", "curl -fsSL \\"],
@@ -164,10 +164,10 @@ export default function RoutstrdPage() {
               for the whole team.
             </h2>
             <p className="pg-lede">
-              Run routstrd-auth on a server. Everyone gets their own key and a monthly limit in sats.
+              Run routstrd-remote on a server. Everyone gets their own key and a monthly limit in sats.
             </p>
-            <a className="rd-link rd-more" href={AUTH} target="_blank" rel="noopener noreferrer">
-              routstrd-auth on GitHub
+            <a className="rd-link rd-more" href={REMOTE} target="_blank" rel="noopener noreferrer">
+              routstrd-remote on GitHub
             </a>
           </div>
           <CodePanel label="Who you are" examples={team} />

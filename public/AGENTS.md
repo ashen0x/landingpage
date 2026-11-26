@@ -59,7 +59,7 @@ For a live dashboard, tell the user to open a new terminal and run `routstrd top
 
 ## Teams / hosted instance
 
-For teams, route through **routstrd-auth** (Bearer `sk-...` tokens, per-member npubs):
+For teams, route through **routstrd-remote** (Bearer `sk-...` tokens, per-member npubs):
 
 ```bash
 routstrd remote <your-instance>   # connect to a hosted instance
@@ -69,12 +69,12 @@ curl <your-instance>/npubs -H 'x-routstr-bootstrap-token: <token>' -d '{"npub": 
 routstrd npubs add <member-npub> --name <name> --limit-sats 50000   # admin adds a teammate, 50,000 sats a month
 ```
 
-More: <https://github.com/Routstr/routstrd-auth>
+More: <https://github.com/Routstr/routstrd-remote>
 
 ## Notes & safety
 
 - The daemon listens on `127.0.0.1:8008` by default and is unauthenticated.
-  Don't expose it publicly without `routstrd-auth`.
+  Don't expose it publicly without `routstrd-remote`.
 - Wallet/config live in `~/.routstrd/`; back up the wallet mnemonic.
 - Full docs: <https://docs.routstr.com> · Repo: <https://github.com/routstr/routstrd>
 

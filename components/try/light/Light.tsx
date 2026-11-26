@@ -183,7 +183,7 @@ const voices = [
   },
 ];
 
-const repos = ["routstr-core", "routstrd", "routstr-sdk", "routstr-chat", "routstrd-auth"];
+const repos = ["routstr-core", "routstrd", "routstr-sdk", "routstr-chat", "routstrd-remote"];
 
 const smooth = (edge0: number, edge1: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
