@@ -10,7 +10,6 @@ import { Fibres, reach, type Pose } from "@/components/try/light/fibres";
 import "./light.css";
 
 const CHAT = "https://chat.routstr.com";
-const DOCS = "https://docs.routstr.com";
 const GUIDE = "https://docs.routstr.com/provider/quickstart/";
 const GITHUB = "https://github.com/Routstr";
 
@@ -613,12 +612,12 @@ export function Light() {
                 for it in sats.
               </p>
               <div className="lt-cta">
-                <a href={DOCS} className="lt-btn">
-                  Start building <Arrow />
-                </a>
-                <Link href="/models" className="lt-link">
-                  Explore the models
+                <Link href="/routstrd" className="lt-btn">
+                  Use routstrd <Arrow />
                 </Link>
+                <a href={GUIDE} className="lt-link">
+                  Run a node
+                </a>
               </div>
               <ul className="lt-facts">
                 <li>OpenAI-compatible</li>
@@ -753,9 +752,9 @@ export function Light() {
                 <Ln>routstr</Ln>
               </h2>
               <div className="lt-cta">
-                <a href={DOCS} className="lt-btn">
-                  Start building <Arrow />
-                </a>
+                <Link href="/routstrd" className="lt-btn">
+                  Get the CLI <Arrow />
+                </Link>
                 <a href={CHAT} className="lt-link">
                   Open the chat
                 </a>
