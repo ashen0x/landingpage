@@ -22,6 +22,7 @@ const WIDE: Pose[] = [
   { ...still, form: 2, x: 0, y: -1.42, yaw: 0, pitch: 0.12, roll: 0.05, scale: 1, gain: 0.55, pulse: 2.6 },
   { ...still, form: 3, x: -1.98, y: -0.05, yaw: 0.2, pitch: 1.0, roll: 0.3, scale: 0.98, gain: 0.4, pulse: 1.3 },
   { ...still, form: 4, x: 1.36, y: 0, yaw: 0, pitch: 0.2, roll: 0, scale: 1.0, gain: 0.38, pulse: 1.5 },
+  { ...still, form: 7, x: 1.5, y: -0.1, yaw: -0.5, pitch: 0.16, roll: 0.42, scale: 0.9, gain: 0.5, pulse: 1.6, blur: 0.3 },
   { ...still, form: 7, x: 0, y: -1.0, yaw: 0, pitch: 0.1, roll: 0.02, scale: 1, gain: 0.5, pulse: 1.2, blur: 0.2 },
   { ...still, form: 5, x: 0, y: -1.45, yaw: 0, pitch: 0.08, roll: 0, scale: 1, gain: 0.7, pulse: 1.1, chosen: 0.6, blur: 0.5 },
   { ...still, form: 6, x: 0, y: 0.52, yaw: 0, pitch: 0, roll: 0, scale: 0.98, gain: 2.3, pulse: 1.2, blur: 0, mark: 1 },
@@ -32,6 +33,7 @@ const NARROW: Pose[] = [
   { ...still, form: 2, x: 0, y: 0.95, yaw: 0, pitch: 0.12, roll: 0.3, scale: 0.6, gain: 0.55, pulse: 2.6 },
   { ...still, form: 3, x: 0, y: 1.25, yaw: 0.2, pitch: 1.0, roll: 0.3, scale: 0.44, gain: 0.22, pulse: 1.3 },
   { ...still, form: 4, x: 0, y: 1.02, yaw: 0, pitch: 0.2, roll: 0, scale: 0.5, gain: 0.38, pulse: 1.5 },
+  { ...still, form: 7, x: 0, y: 1.0, yaw: -0.3, pitch: 0.16, roll: 0.3, scale: 0.6, gain: 0.5, pulse: 1.6, blur: 0.3 },
   { ...still, form: 7, x: 0, y: 1.02, yaw: 0, pitch: 0.1, roll: 0.08, scale: 0.62, gain: 0.5, pulse: 1.2, blur: 0.2 },
   { ...still, form: 5, x: 0, y: -1.45, yaw: 0, pitch: 0.1, roll: 0, scale: 0.8, gain: 0.55, pulse: 1.1, chosen: 0.6, blur: 0.5 },
   { ...still, form: 6, x: 0, y: 0.1, yaw: 0, pitch: 0, roll: 0, scale: 0.6, gain: 2.1, pulse: 1.4, blur: 0, mark: 1 },
@@ -40,7 +42,7 @@ const NARROW: Pose[] = [
 const OPENING_WIDE: Pose = { ...still, form: 2, x: 0.4, y: 0.1, yaw: 0, pitch: 0.1, roll: -0.16, scale: 1, gain: 0.34, pulse: 4 };
 const OPENING_NARROW: Pose = { ...still, form: 2, x: 0, y: 1.0, yaw: 0, pitch: 0.1, roll: -0.3, scale: 0.6, gain: 0.5, pulse: 4 };
 
-const scenes = ["Start", "Route", "Pay", "Build", "Earn", "Voices", "Open", "Routstr"];
+const scenes = ["Start", "Route", "Pay", "Build", "Earn", "Social", "Voices", "Open", "Routstr"];
 
 const snippets = [
   {
@@ -720,6 +722,25 @@ export function Light() {
                   See who is selling
                 </Link>
               </div>
+            </div>
+          </section>
+
+          <section className="lt-part" data-part data-side="left">
+            <div className="lt-in">
+              <p className="lt-label">Social</p>
+              <h2>
+                <Ln>A marketplace</Ln>
+                <Ln i={1}>
+                  inside <b>social media.</b>
+                </Ln>
+              </h2>
+              <p className="lt-lede">
+                Nodes announce themselves on Nostr. People review them under their own names, and
+                every node signs what it sold. You see who to trust before you spend a sat.
+              </p>
+              <Link href="/providers" className="lt-link">
+                See the nodes and their reviews
+              </Link>
             </div>
           </section>
 
