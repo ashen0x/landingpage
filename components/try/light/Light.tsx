@@ -17,7 +17,7 @@ const GITHUB = "https://github.com/Routstr";
    stands beside the words; on a narrow one it stands above them. */
 const still = { chosen: 0, blur: 1, mark: 0 };
 const WIDE: Pose[] = [
-  { ...still, form: 0, x: 2.05, y: -0.1, yaw: -0.42, pitch: 0.2, roll: -0.34, scale: 1.16, gain: 1, pulse: 0.8 },
+  { ...still, form: 0, x: 2.25, y: 0.02, yaw: -0.42, pitch: 0.2, roll: -0.34, scale: 1.16, gain: 1, pulse: 0.8 },
   { ...still, form: 1, x: 2.2, y: -0.7, yaw: -0.62, pitch: 0.86, roll: 0.05, scale: 0.9, gain: 0.9, pulse: 0.2, chosen: 1, blur: 0.7 },
   { ...still, form: 2, x: 0, y: -1.42, yaw: 0, pitch: 0.12, roll: 0.05, scale: 1, gain: 0.55, pulse: 2.6 },
   { ...still, form: 3, x: -1.98, y: -0.05, yaw: 0.2, pitch: 1.0, roll: 0.3, scale: 0.98, gain: 0.4, pulse: 1.3 },
@@ -604,10 +604,10 @@ export function Light() {
         <div className="lt-screen">
           <section className="lt-part lt-hero" data-part data-side="left">
             <div className="lt-in">
-              <p className="lt-label">An open market for AI</p>
+              <p className="lt-label">Nostr · Bitcoin · AI</p>
               <h1>
-                <Ln>One route to</Ln>{" "}
-                <Ln i={1}>every model.</Ln>
+                <Ln>The open</Ln>{" "}
+                <Ln i={1}>market for AI.</Ln>
               </h1>
               <p className="lt-lede">
                 Independent nodes sell the models. Your request takes the best path. You pay for
