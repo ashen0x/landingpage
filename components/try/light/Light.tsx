@@ -608,8 +608,8 @@ export function Light() {
                 <Ln i={1}>every model.</Ln>
               </h1>
               <p className="lt-lede">
-                Independent nodes sell the models. Your request takes the cheapest path. You pay
-                for it in sats.
+                Independent nodes sell the models. Your request takes the best path. You pay for
+                it in sats.
               </p>
               <div className="lt-cta">
                 <Link href="/routstrd" className="lt-btn">
@@ -633,8 +633,9 @@ export function Light() {
               <p className="lt-label">Route</p>
               <h2>
                 <Ln>Many nodes.</Ln>
-                <Ln i={1}>
-                  The cheapest <b>wins.</b>
+                <Ln i={1}>The best inference</Ln>
+                <Ln i={2}>
+                  path <b>wins.</b>
                 </Ln>
               </h2>
               <p className="lt-lede">
