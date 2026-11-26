@@ -9,7 +9,7 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* a reviewer approved it: apps send requests here */
+/* it has been reviewed */
 .pv-review[data-ok] {
   color: var(--gold);
 }

@@ -4,6 +4,7 @@ import {
   indexListOpen,
   indexListScores,
   latestReviewLabels,
+  reviewCounts,
   parseModelIdMappings,
   type ModelIdMappings,
   type TokenRates,
@@ -29,6 +30,19 @@ export async function fetchReviewLabels(): Promise<Map<string, string>> {
     );
     const latest = Math.floor(Date.now() / 1000) + MAX_FUTURE_DRIFT_SECONDS;
     return latestReviewLabels(events.filter((e) => e.created_at <= latest));
+  } catch {
+    return new Map();
+  } finally {
+    pool.close(RELAYS);
+  }
+}
+
+/** How many reviewers have reviewed each node key: anyone's review counts. Empty when no relay answers. */
+export async function fetchReviewCounts(): Promise<Map<string, number>> {
+  const pool = createPool();
+  try {
+    const events = await pool.querySync(RELAYS, { kinds: [38425], limit: 500 }, { maxWait: 5000 });
+    return reviewCounts(events);
   } catch {
     return new Map();
   } finally {

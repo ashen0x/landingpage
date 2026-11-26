@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Search } from "lucide-react";
 import { SiteShell } from "@/components/layout/site-shell";
-import { fetchReviewLabels } from "@/lib/api/price-sources";
+import { fetchReviewCounts, fetchReviewLabels } from "@/lib/api/price-sources";
 import { isApproved } from "@/lib/price-radar";
 import { nodeKey, useModelUsage } from "@/lib/model-usage";
 import { useNodeLists } from "@/lib/use-node-lists";
@@ -12,12 +12,13 @@ import { formatCompactCount } from "@/lib/number-format";
 import "@/components/layout/pages.css";
 import "./providers.css";
 
-type Kind = "approved" | "tor";
+type Kind = "reviewed" | "tor";
 
 export default function ProvidersPage() {
   const { nodes, loading } = useNodeLists();
   const usage = useModelUsage();
   const [labels, setLabels] = useState<Map<string, string>>(() => new Map());
+  const [reviewCounts, setReviewCounts] = useState<Map<string, number>>(() => new Map());
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<Kind | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export default function ProvidersPage() {
   useEffect(() => {
     let active = true;
     void fetchReviewLabels().then((found) => active && setLabels(found));
+    void fetchReviewCounts().then((found) => active && setReviewCounts(found));
     return () => {
       active = false;
     };
@@ -54,11 +56,11 @@ export default function ProvidersPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  /* One line per node: what it says of itself, whether apps send it requests, and the
-     requests it reports it served. Approved nodes first, then the busiest. */
+  /* One line per node: what it says of itself, how many have reviewed it, whether apps send it
+     requests, and the requests it reports it served. Nodes apps route to first, then the busiest. */
   const served = usage.served;
   const lines = useMemo(() => {
-    // several keys can announce one address; it is one node, approved if one key is and none is blocked
+    // several keys can announce one address; it is one node: apps route to it if one key passed review and none is blocked
     const keysAt = new Map<string, Set<string>>();
     for (const { provider } of nodes) {
       const at = nodeKey(provider.endpoint_url);
@@ -68,34 +70,37 @@ export default function ProvidersPage() {
       .map(({ provider, models }) => {
         const onion = provider.endpoint_urls.find((url) => url.includes(".onion")) ?? null;
         const web = [provider.endpoint_url, ...provider.endpoint_urls].find((url) => /^https:\/\//.test(url)) ?? null;
+        const keys = Array.from(keysAt.get(nodeKey(provider.endpoint_url)) ?? [provider.pubkey]);
         return {
           provider,
           models: models.length,
           web,
           onion,
           mints: provider.mint_urls && provider.mint_urls.length > 0 ? provider.mint_urls : provider.mint_url ? [provider.mint_url] : [],
-          approved: labels.size > 0 && isApproved(keysAt.get(nodeKey(provider.endpoint_url)) ?? [provider.pubkey], labels),
+          routed: labels.size > 0 && isApproved(keys, labels),
+          // a reviewer writes one review per key: the node's count is its most reviewed key's
+          reviews: Math.max(...keys.map((key) => reviewCounts.get(key) ?? 0)),
           served: served?.[nodeKey(provider.endpoint_url)] ?? served?.[provider.pubkey] ?? null,
         };
       })
       .sort(
         (a, b) =>
-          Number(b.approved) - Number(a.approved) ||
+          Number(b.routed) - Number(a.routed) ||
           (b.served ?? -1) - (a.served ?? -1) ||
           b.models - a.models ||
           a.provider.name.localeCompare(b.provider.name)
       );
-  }, [nodes, labels, served]);
+  }, [nodes, labels, reviewCounts, served]);
 
   const selling = lines.filter((line) => line.models > 0);
   const quiet = lines.filter((line) => line.models === 0);
-  const approved = selling.filter((line) => line.approved).length;
+  const reviewed = selling.filter((line) => line.reviews > 0).length;
   const overTor = selling.filter((line) => line.onion).length;
 
   const needle = search.trim().toLowerCase();
   const shown = selling.filter(
     (line) =>
-      (kind !== "approved" || line.approved) &&
+      (kind !== "reviewed" || line.reviews > 0) &&
       (kind !== "tor" || line.onion) &&
       (!needle ||
         line.provider.name.toLowerCase().includes(needle) ||
@@ -136,6 +141,7 @@ export default function ProvidersPage() {
     ["--cols-mid-tight" as string]: "minmax(0, 1fr) 7.4rem 6rem 4.4rem",
     ["--cols-narrow" as string]: "minmax(0, 1fr) 6.6rem",
   };
+  const said = (reviews: number) => (reviews === 0 ? "not reviewed" : `${reviews} ${reviews === 1 ? "review" : "reviews"}`);
   /** What is known of a node: shown in the card beside the list, or under its row where there is no card. */
   const about = (line: (typeof lines)[number]) => (
     <>
@@ -186,8 +192,8 @@ export default function ProvidersPage() {
         )}
       </dl>
       <p className="pv-why">
-        <b>What &ldquo;approved&rdquo; means.</b> A reviewer checked this node and signed a label for it. Apps send
-        requests only to approved nodes. The others still work if you pick them by hand.
+        <b>What a review is.</b> Someone checked a node and signed what they found with their own Nostr key. Anyone
+        can write one. {line.routed ? "Apps send requests to this node." : "Apps do not send requests to this node on their own; it still works if you pick it by hand."}
       </p>
       <Link href={`/prices?node=${encodeURIComponent(line.provider.endpoint_url)}`} className="pg-more">
         Its prices against other nodes <ArrowRight strokeWidth={1.5} aria-hidden="true" />
@@ -208,8 +214,8 @@ export default function ProvidersPage() {
           <b>{line.provider.name}</b>
           {line.provider.description && <code>{line.provider.description}</code>}
         </span>
-        <span className="pv-review" data-ok={line.approved || undefined}>
-          {line.approved ? "approved" : "not approved"}
+        <span className="pv-review" data-ok={line.reviews > 0 || undefined}>
+          {said(line.reviews)}
         </span>
         <span className="pg-num pg-end pg-hide" data-quiet>
           {line.served === null ? "—" : formatCompactCount(line.served)}
@@ -238,8 +244,8 @@ export default function ProvidersPage() {
         <p className="pg-lede">
           {selling.length > 0 ? (
             <>
-              <b>{selling.length}</b> nodes sell models here. Anyone can run one. Apps only send requests to the{" "}
-              <b>{approved}</b> a reviewer has approved.
+              <b>{selling.length}</b> nodes sell models here. Anyone can run one, and anyone can review one.{" "}
+              <b>{reviewed}</b> have been reviewed.
             </>
           ) : loading ? (
             "Asking the nodes who is there."
@@ -276,8 +282,8 @@ export default function ProvidersPage() {
               <button type="button" aria-pressed={!kind} onClick={() => setKind(null)}>
                 All <i>{selling.length}</i>
               </button>
-              <button type="button" aria-pressed={kind === "approved"} onClick={() => setKind(kind === "approved" ? null : "approved")}>
-                Approved <i>{approved}</i>
+              <button type="button" aria-pressed={kind === "reviewed"} onClick={() => setKind(kind === "reviewed" ? null : "reviewed")}>
+                Reviewed <i>{reviewed}</i>
               </button>
               {overTor > 0 && (
                 <button type="button" aria-pressed={kind === "tor"} onClick={() => setKind(kind === "tor" ? null : "tor")}>
@@ -292,7 +298,7 @@ export default function ProvidersPage() {
           <div className="pg-list pv-list" style={cols}>
             <div className="pg-cols">
               <span>Node</span>
-              <span>Review</span>
+              <span>Reviews</span>
               <span className="pg-end pg-hide" title="Requests the node reports it served in the last 30 days">
                 Served<small>30d</small>
               </span>
@@ -335,8 +341,8 @@ export default function ProvidersPage() {
           {open && (
             <aside ref={card} className="pg-panel" aria-label={`About ${open.provider.name}`}>
               <h2>{open.provider.name}</h2>
-              <p className="pv-review" data-ok={open.approved || undefined} style={{ margin: "10px 0 0" }}>
-                {open.approved ? "approved" : "not approved"}
+              <p className="pv-review" data-ok={open.reviews > 0 || undefined} style={{ margin: "10px 0 0" }}>
+                {said(open.reviews)}
               </p>
               {about(open)}
             </aside>

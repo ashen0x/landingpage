@@ -105,6 +105,20 @@ export function latestReviewLabels(
   );
 }
 
+/** How many reviewers have a kind 38425 review of each node key, whatever it says. */
+export function reviewCounts(
+  events: readonly (ReviewEvent & { readonly pubkey: string })[]
+): Map<string, number> {
+  const reviewers = new Map<string, Set<string>>();
+  for (const event of events) {
+    for (const tag of event.tags) {
+      if (tag[0] !== "node" || !tag[1]) continue;
+      reviewers.set(tag[1], (reviewers.get(tag[1]) ?? new Set()).add(event.pubkey));
+    }
+  }
+  return new Map(Array.from(reviewers, ([node, by]) => [node, by.size] as const));
+}
+
 /**
  * Whether apps route to a URL announced by these keys: one key's newest
  * review approves it and none blocks it.
