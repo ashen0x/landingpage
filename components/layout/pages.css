@@ -492,6 +492,29 @@
 .pg-num[data-quiet] {
   color: var(--dim);
 }
+/* a price says what it is in: the unit follows the number, quieter and smaller */
+.pg-unit {
+  color: var(--faint);
+  font-size: 0.8em;
+  font-weight: 400;
+}
+/* a list with two prices in a row has no room for both units on a phone: there the unit stands
+   once, by the name of the column */
+.pg-unit-head {
+  display: none;
+  margin-left: 5px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  opacity: 0.8;
+}
+@media (max-width: 760px) {
+  .pg-units-above .pg-unit {
+    display: none;
+  }
+  .pg-units-above .pg-unit-head {
+    display: inline;
+  }
+}
 /* cheaper here than the price it is set against */
 .pg-num[data-under] {
   color: var(--gold);

@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { SiteShell } from "@/components/layout/site-shell";
 import { Mark } from "@/components/layout/Mark";
+import { Money } from "@/components/layout/Money";
 import { companyIn } from "@/components/stats/model-company-icon";
 import { useNodeLists } from "@/lib/use-node-lists";
 import { fetchListPrices, fetchModelIdMappings, fetchReviewLabels } from "@/lib/api/price-sources";
@@ -87,8 +88,9 @@ export default function PricesPage() {
   const { currency, setCurrency } = usePricingView();
   const sats = currency === "sats";
   /** What a node asks for one request, in the money the page is set to. */
-  const money = (entry: RadarEntry | null | undefined) =>
-    !entry ? "—" : sats ? formatSats(entry.sats) : entry.usd === null ? "—" : formatUsd(entry.usd);
+  const money = (entry: RadarEntry | null | undefined) => (
+    <Money sats={sats}>{!entry ? "—" : sats ? formatSats(entry.sats) : entry.usd === null ? "—" : formatUsd(entry.usd)}</Money>
+  );
 
   useEffect(() => {
     let active = true;
@@ -578,8 +580,7 @@ export default function PricesPage() {
                 </span>
                 {!picked && <span className="pr-winner">Cheapest node</span>}
                 <span className="pg-end">
-                  {picked ? "Its price" : sats ? "Sats" : "USD"}
-                  {!picked && <span className="pr-wide"> a request</span>}
+                  {picked ? "Its price" : "A request"}
                 </span>
                 {picked && <span className="pg-end pr-cut">Cheapest</span>}
                 {picked && <span className="pg-end">Place</span>}

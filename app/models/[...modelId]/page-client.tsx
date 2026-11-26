@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { SiteShell } from "@/components/layout/site-shell";
 import { Mark } from "@/components/layout/Mark";
+import { Money } from "@/components/layout/Money";
 import { Kinds } from "@/components/layout/Kinds";
 import { companyIn } from "@/components/stats/model-company-icon";
 import { ModelReviews } from "@/components/ModelReviews";
@@ -303,8 +304,8 @@ export default function ModelDetailPage() {
                     {entry.provider.name}
                     {reviewed && !approved(entry.provider) && <i>not approved</i>}
                   </span>
-                  <span>{price(sats ? entry.model.sats_pricing?.prompt : entry.model.pricing?.prompt, freeAt(entry.model))}</span>
-                  <span>{price(sats ? entry.model.sats_pricing?.completion : entry.model.pricing?.completion, freeAt(entry.model))}</span>
+                  <span><Money sats={sats}>{price(sats ? entry.model.sats_pricing?.prompt : entry.model.pricing?.prompt, freeAt(entry.model))}</Money></span>
+                  <span><Money sats={sats}>{price(sats ? entry.model.sats_pricing?.completion : entry.model.pricing?.completion, freeAt(entry.model))}</Money></span>
                 </button>
               ))}
             </div>
