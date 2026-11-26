@@ -261,10 +261,14 @@
   font-weight: 500;
   letter-spacing: -0.025em;
 }
+/* each list measures itself: a bar stands beside a number only where the names keep their room */
+.st-two > div {
+  container-type: inline-size;
+}
 .st-cols,
 .st-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 12rem 12rem;
+  grid-template-columns: minmax(0, 1fr) 10.5rem 10.5rem;
   gap: 22px;
   align-items: center;
   width: 100%;
@@ -289,8 +293,10 @@
   gap: 8px;
 }
 .st-over b {
+  /* a heading longer than its column runs out to the left, into the gap, and stays on one line */
+  justify-self: end;
   font-weight: 400;
-  text-align: right;
+  white-space: nowrap;
 }
 .st-over em {
   font-style: normal;
@@ -298,6 +304,7 @@
 }
 .st-row {
   min-height: 50px;
+  padding-block: 6px;
   box-shadow: inset 0 -1px 0 var(--hair);
   color: var(--ink);
   font-size: 15px;
@@ -328,10 +335,11 @@
   gap: 11px;
   min-width: 0;
 }
+/* a name is never cut: a very long one goes on to a second line */
 .st-name > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 .st-name small {
   color: var(--faint);
@@ -374,6 +382,23 @@
   font-size: 12px;
   font-style: normal;
   text-align: right;
+}
+/* a list too narrow for names and bars keeps the names: number and share stay, the bars go */
+@container (max-width: 760px) {
+  .st-cols,
+  .st-row {
+    grid-template-columns: minmax(0, 1fr) 7.4rem 7.4rem;
+    gap: 14px;
+  }
+  .st-cols {
+    letter-spacing: 0.05em;
+  }
+  .st-share {
+    grid-template-columns: minmax(0, 1fr) 2.9rem;
+  }
+  .st-share u {
+    display: none;
+  }
 }
 .st-foot {
   margin: clamp(36px, 6vh, 56px) 0 0;
