@@ -3,4 +3,4 @@
 :HL["/landingpage/_next/static/css/68bf715b5999a3ea.css","style"]
 :HL["/landingpage/_next/static/css/11a7e36a25dd4771.css","style"]
 :HL["/landingpage/_next/static/css/b0fce8a698116e64.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"blog","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"tinfoil-attestation-in-routstr-sdk","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"YjULXtiOh9DiAqmqLGoUt"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"blog","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"tinfoil-attestation-in-routstr-sdk","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"EygdnsoXqx_ySoHDboAz1"}
