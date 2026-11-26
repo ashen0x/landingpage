@@ -15,7 +15,6 @@ import { canonicalModelId, isApproved, requestCost, type ModelIdMappings } from 
 import { companyIn } from "@/components/stats/model-company-icon";
 import { pulse } from "@/components/layout/Band";
 import { Mark } from "@/components/layout/Mark";
-import { Money } from "@/components/layout/Money";
 import { Kinds } from "@/components/layout/Kinds";
 import "@/components/layout/pages.css";
 
@@ -678,7 +677,7 @@ export default function ModelsPage() {
         )}
 
         <div className={open ? "pg-two" : undefined}>
-          <div ref={table} className="pg-list pg-units-above" style={cols}>
+          <div ref={table} className="pg-list" style={cols}>
             <div className="pg-cols">
               {sortBy("name", "Model")}
               <span
@@ -778,8 +777,8 @@ export default function ModelsPage() {
                               ? "—"
                               : "·"}
                     </span>
-                    <span className="pg-num pg-end"><Money sats={sats}>{price(sats ? entry.sats.prompt : entry.usd.prompt, entry.free)}</Money></span>
-                    <span className="pg-num pg-end"><Money sats={sats}>{price(sats ? entry.sats.completion : entry.usd.completion, entry.free)}</Money></span>
+                    <span className="pg-num pg-end">{price(sats ? entry.sats.prompt : entry.usd.prompt, entry.free)}</span>
+                    <span className="pg-num pg-end">{price(sats ? entry.sats.completion : entry.usd.completion, entry.free)}</span>
                     <span
                       className="pg-num pg-end pg-hide"
                       data-quiet

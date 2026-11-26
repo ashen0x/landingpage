@@ -488,6 +488,8 @@
 .pg-num {
   color: var(--ink);
   font-size: 14px;
+  /* a number and its unit stay on one line */
+  white-space: nowrap;
 }
 .pg-num[data-quiet] {
   color: var(--dim);
@@ -498,22 +500,13 @@
   font-size: 0.8em;
   font-weight: 400;
 }
-/* a list with two prices in a row has no room for both units on a phone: there the unit stands
-   once, by the name of the column */
+/* a list with two prices in a row says the unit once, by the name of each column, so the numbers
+   under it stand in one straight line */
 .pg-unit-head {
-  display: none;
   margin-left: 5px;
   letter-spacing: 0.04em;
   text-transform: none;
   opacity: 0.8;
-}
-@media (max-width: 760px) {
-  .pg-units-above .pg-unit {
-    display: none;
-  }
-  .pg-units-above .pg-unit-head {
-    display: inline;
-  }
 }
 /* cheaper here than the price it is set against */
 .pg-num[data-under] {
