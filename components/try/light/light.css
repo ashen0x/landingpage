@@ -61,10 +61,18 @@
 .lt[data-ready] .lt-light {
   opacity: 1;
 }
-/* on paper the light is drawn as ink, as it is on the other pages */
+/* On paper the light is drawn as ink. It is dimmed before it is turned over, so that where the
+   fibres lie thickest they stay a soft blue-grey and never a black mass, and its colour is raised
+   after, so that the gold threads still read as gold. */
 :root:not(.dark) .lt-light {
-  filter: invert(1) hue-rotate(180deg);
+  filter: brightness(0.7) invert(1) hue-rotate(180deg) saturate(1.8);
   mix-blend-mode: multiply;
+}
+/* where the light stands above the words it is smaller and its fibres lie closer: dimmed further */
+@media (max-width: 760px), (max-aspect-ratio: 1/1) {
+  :root:not(.dark) .lt-light {
+    filter: brightness(0.5) invert(1) hue-rotate(180deg) saturate(2.2);
+  }
 }
 .lt[data-ready="flat"] .lt-light {
   background:
