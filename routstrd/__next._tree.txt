@@ -6,4 +6,4 @@
 :HL["/landingpage/_next/static/css/880687f1728abee4.css","style"]
 :HL["/landingpage/_next/static/css/dd2ad8cb6af30c4f.css","style"]
 :HL["/landingpage/_next/static/css/31da733f64992d04.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"routstrd","param":null,"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}},"staleTime":300,"buildId":"REt_ZNhBQZER87RCoIBP4"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"routstrd","param":null,"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}},"staleTime":300,"buildId":"YjULXtiOh9DiAqmqLGoUt"}
