@@ -49,8 +49,7 @@ function Item({ link, className, current, onClick }: { link: NavLink; className?
   );
 }
 
-/** The bar. `night` is for a page that is dark whatever the theme: it has no theme switch. */
-export default function Header({ night = false }: { night?: boolean }) {
+export default function Header() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -108,16 +107,14 @@ export default function Header({ night = false }: { night?: boolean }) {
         <a href={GITHUB_URL} className="hd-link hd-quiet">
           GitHub
         </a>
-        {!night && (
-          <button
-            type="button"
-            className="hd-icon hd-theme"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Switch to the light theme" : "Switch to the dark theme"}
-          >
-            {theme === "dark" ? <Sun /> : <Moon />}
-          </button>
-        )}
+        <button
+          type="button"
+          className="hd-icon hd-theme"
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Switch to the light theme" : "Switch to the dark theme"}
+        >
+          {theme === "dark" ? <Sun /> : <Moon />}
+        </button>
         <a href={CHAT_URL} className="hd-pill">
           Open chat <ArrowRight strokeWidth={1.5} />
         </a>
@@ -142,13 +139,11 @@ export default function Header({ night = false }: { night?: boolean }) {
           {more.map((link) => (
             <Item key={link.href} link={link} onClick={close} />
           ))}
-          {!night && (
-            <div className="hd-panel-phone">
-              <button type="button" onClick={toggleTheme}>
-                {theme === "dark" ? "Light theme" : "Dark theme"}
-              </button>
-            </div>
-          )}
+          <div className="hd-panel-phone">
+            <button type="button" onClick={toggleTheme}>
+              {theme === "dark" ? "Light theme" : "Dark theme"}
+            </button>
+          </div>
         </div>
       )}
     </header>

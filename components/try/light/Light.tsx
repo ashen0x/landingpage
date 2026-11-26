@@ -585,10 +585,10 @@ export function Light() {
   }, []);
 
   return (
-    <div className="lt dark" ref={root}>
+    <div className="lt" ref={root}>
       <canvas ref={canvas} className="lt-light" aria-hidden="true" />
 
-      <Header night />
+      <Header />
 
       <nav className="lt-rail" aria-label="Scenes">
         {scenes.map((name, i) => (
