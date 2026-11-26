@@ -96,19 +96,20 @@ const rails = [
 const voices = [
   {
     on: "x",
-    name: "jack",
-    face: "jack",
-    handle: "@jack",
-    text: "nostr+bitcoin+ai routstr.com",
-    href: "https://x.com/jack/status/1925607683454869946",
-  },
-  {
-    on: "x",
     name: "Juraj Bednar",
     face: "juraj",
     handle: "@jurbed",
     text: "The magic trick is routstr. It creates a brutal competitive marketplace for inference, where providers undercut each other on price.",
     href: "https://x.com/jurbed/status/2101954518804042189",
+  },
+  // second, not first: the row drifts to the left, and the first post is the first to leave
+  {
+    on: "x",
+    name: "jack",
+    face: "jack",
+    handle: "@jack",
+    text: "nostr+bitcoin+ai routstr.com",
+    href: "https://x.com/jack/status/1925607683454869946",
   },
   {
     on: "nostr",
