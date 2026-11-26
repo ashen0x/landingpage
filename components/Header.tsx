@@ -23,7 +23,6 @@ const primary: NavLink[] = [
 ];
 
 const more: NavLink[] = [
-  { title: "Routstr Daemon", href: "/routstrd", note: "Routing for coding agents" },
   { title: "Hosted Daemon", href: "https://github.com/Routstr/routstrd-remote", note: "One daemon for a team", external: true },
   { title: "Top-Up", href: "/topup", note: "Fund an API key" },
   { title: "Capabilities", href: "/capabilities", note: "What Routstr can do" },
@@ -115,9 +114,9 @@ export default function Header() {
         >
           {theme === "dark" ? <Sun /> : <Moon />}
         </button>
-        <a href={CHAT_URL} className="hd-pill">
-          Open chat <ArrowRight strokeWidth={1.5} />
-        </a>
+        <Link href="/routstrd" className="hd-pill" onClick={close}>
+          Get routstrd <ArrowRight strokeWidth={1.5} />
+        </Link>
         <button
           type="button"
           className="hd-icon hd-menu"

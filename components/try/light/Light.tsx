@@ -777,8 +777,8 @@ export function Light() {
                 <Link href="/routstrd" className="lt-btn">
                   Get the CLI <Arrow />
                 </Link>
-                <a href={CHAT} className="lt-link">
-                  Open the chat
+                <a href={GUIDE} className="lt-link">
+                  Run a node
                 </a>
               </div>
             </div>
