@@ -301,9 +301,10 @@ export default function PricesPage() {
           aria-expanded={isOpen}
           onClick={() => setOpenModel(isOpen ? null : openKey)}
         >
-          <span className="pg-name pg-marked">
+          <span className="pg-name pg-marked pr-opens">
             <Mark company={companyIn(row.modelId)} />
             <b className="pr-id">{row.modelId}</b>
+            <ChevronDown className="pr-arrow" aria-hidden="true" />
           </span>
           <span className="pg-num pg-end pr-asked" data-quiet>
             {asked > 0 ? formatCompactCount(asked) : usage.requests || usage.done ? "—" : "·"}

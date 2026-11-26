@@ -221,6 +221,28 @@
   font-weight: 400;
   letter-spacing: 0;
 }
+/* a row opens to every node that sells the model: the small arrow by its name says so */
+.pr-opens {
+  grid-template-columns: auto minmax(0, max-content) auto;
+  justify-content: start;
+}
+.pr-opens > b,
+.pr-arrow {
+  grid-row: 1 / span 2;
+}
+.pr-arrow {
+  width: 14px;
+  height: 14px;
+  margin-left: -6px;
+  color: var(--faint);
+  transition: rotate 300ms var(--out), color 200ms;
+}
+.pg-row:hover .pr-arrow {
+  color: var(--ink);
+}
+.pg-row[aria-expanded="true"] .pr-arrow {
+  rotate: 180deg;
+}
 /* a model opened: every node that sells it, in the order apps try them */
 .pr-open {
   margin: 0;
