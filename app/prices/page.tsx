@@ -375,7 +375,7 @@ export default function PricesPage() {
         <>
           <em>{line.served === null ? "—" : formatCompactCount(line.served)}</em>
           <small>
-            sells {line.models} models · cheapest on {line.first}
+            cheapest on {line.first} {line.first === 1 ? "model" : "models"}
           </small>
           <span className="pr-bar" aria-hidden="true">
             <i style={{ width: `${((line.served ?? 0) / most) * 100}%` }} />
