@@ -138,8 +138,57 @@
   color: var(--faint);
   font-size: 12.5px;
 }
-.pr-phone {
+/* The board is shown only where it has room beside the list. Elsewhere the list comes first, and
+   a node is picked from a short menu by the search. */
+.pr-board {
   display: none;
+}
+.pr-pick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 46px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background) 62%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  transition: box-shadow 260ms;
+}
+.pr-pick:focus-within {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 42%, transparent);
+}
+.pr-pick span {
+  padding-left: 16px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pr-pick select {
+  max-width: 13rem;
+  height: 100%;
+  padding: 0 38px 0 10px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+.pr-pick :is(option, optgroup) {
+  background: var(--background);
+  color: var(--foreground);
+}
+.pr-pick svg {
+  position: absolute;
+  right: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+  pointer-events: none;
 }
 /* lines of the board still on their way */
 .pr-wait {
@@ -306,7 +355,11 @@
     gap: clamp(28px, 4vw, 64px);
     align-items: start;
   }
+  .pr-pick {
+    display: none;
+  }
   .pr-board {
+    display: block;
     position: sticky;
     top: 92px;
     max-height: calc(100svh - 112px);
@@ -370,11 +423,13 @@
   .pr-list[data-picked] .pr-nodes-col {
     display: none;
   }
-  .pr-phone {
-    display: flex;
+  /* the menu of nodes takes a line of its own under the search */
+  .pr-pick {
+    flex: 1 1 100%;
   }
-  .pr-board:not([data-whole]) .pr-in-use > :nth-child(n + 6):not([aria-pressed="true"]) {
-    display: none;
+  .pr-pick select {
+    flex: 1;
+    max-width: none;
   }
   .pr-list .pg-row {
     min-height: 58px;

@@ -32,7 +32,6 @@ const MY_NODE_KEY = "routstr:prices:node";
 const FIRST_ROWS = 50;
 const MORE_ROWS = 100;
 /** How many nodes of the board a phone shows before it is asked for all of them. */
-const BOARD_ON_PHONE = 5;
 
 type View = "all" | "first" | "behind";
 
@@ -81,7 +80,6 @@ export default function PricesPage() {
   const [openModel, setOpenModel] = useState<string | null>(null);
   const [view, setView] = useState<View>("all");
   const [shown, setShown] = useState(FIRST_ROWS);
-  const [wholeBoard, setWholeBoard] = useState(false);
   const [othersOpen, setOthersOpen] = useState(false);
   const searchBox = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -433,7 +431,7 @@ export default function PricesPage() {
         </p>
 
         <div className="pr-sides">
-          <div className="pr-board" data-whole={wholeBoard || undefined}>
+          <div className="pr-board">
             <div className="pr-cap">
               <span>Node</span>
               <span title="Requests the node reports it served in the last 30 days">
@@ -447,12 +445,6 @@ export default function PricesPage() {
                 <div className="pr-nodes pr-in-use">
                   {inUse.map((line, i) => nodeLine(line, i === 0 && (line.served ?? 0) > 0))}
                 </div>
-                {inUse.length > BOARD_ON_PHONE && (
-                  <button type="button" className="pr-fold pr-phone" aria-expanded={wholeBoard} onClick={() => setWholeBoard(!wholeBoard)}>
-                    {wholeBoard ? "Fewer nodes" : `All ${inUse.length} nodes`}
-                    <ChevronDown aria-hidden="true" />
-                  </button>
-                )}
                 {others.length > 0 && (
                   <>
                     <button type="button" className="pr-fold" aria-expanded={othersOpen} onClick={() => setOthersOpen(!othersOpen)}>
@@ -519,6 +511,29 @@ export default function PricesPage() {
                   </kbd>
                 )}
               </label>
+              {board.length > 0 && (
+                <label className="pr-pick">
+                  <span>Node</span>
+                  <select value={picked} onChange={(event) => pickNode(event.target.value)} aria-label="Show one node's prices">
+                    <option value="">All nodes</option>
+                    {inUse.map((line) => (
+                      <option key={line.node.url} value={line.node.url}>
+                        {line.node.name}
+                      </option>
+                    ))}
+                    {others.length > 0 && (
+                      <optgroup label="Not approved">
+                        {others.map((line) => (
+                          <option key={line.node.url} value={line.node.url}>
+                            {line.node.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                  <ChevronDown aria-hidden="true" />
+                </label>
+              )}
               {views.length > 0 && (
                 <div className="pg-chips" role="group" aria-label="Its place">
                   {views.map(([key, label, count]) => (
