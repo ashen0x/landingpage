@@ -6,4 +6,4 @@
 :HL["/landingpage/_next/static/css/d4343bf26bf5ffa1.css","style"]
 :HL["/landingpage/_next/static/css/6c8494a45bd35ebe.css","style"]
 :HL["/landingpage/_next/static/css/f15df6a4347c08ab.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"models","param":null,"prefetchHints":0,"slots":{"children":{"name":"modelId","param":{"type":"c","key":"claude-fable-5-2","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"EygdnsoXqx_ySoHDboAz1"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"models","param":null,"prefetchHints":0,"slots":{"children":{"name":"modelId","param":{"type":"c","key":"claude-fable-5-2","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"3ZBgiLEhxmaj6mxMYfCnq"}
