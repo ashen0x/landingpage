@@ -9,7 +9,7 @@ import { GeistMono } from "geist/font/mono";
 export const metadata: Metadata = {
   metadataBase: new URL("https://routstr.com"),
   title: {
-    default: "Routstr: an open market for AI, paid in sats",
+    default: "Routstr",
     template: "%s | Routstr",
   },
   description:
@@ -43,14 +43,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://routstr.com",
-    title: "Routstr: an open market for AI, paid in sats",
+    title: "Routstr: AI is now permissionless, decentralized, private",
     description:
       "Ask any AI model and pay per request in bitcoin. No account, no card, no subscription.",
     siteName: "Routstr",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Routstr: an open market for AI, paid in sats",
+    title: "Routstr: AI is now permissionless, decentralized, private",
     description:
       "Ask any AI model and pay per request in bitcoin. No account, no card, no subscription.",
     creator: "@routstr",

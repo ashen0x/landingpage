@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AI Providers - Routstr",
+  title: "Providers",
   description:
     "Browse providers available through Routstr's decentralized marketplace. Connect with top AI inference nodes.",
   openGraph: {

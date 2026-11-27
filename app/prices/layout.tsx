@@ -4,7 +4,7 @@ const description =
   "What a typical request costs on every Routstr node, and which node apps send it to.";
 
 export const metadata: Metadata = {
-  title: "Node Prices - Routstr",
+  title: "Prices",
   description,
   openGraph: {
     title: "Node Prices - Routstr",

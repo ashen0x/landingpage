@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Browse AI Models",
+  title: "Models",
   description:
     "Compare prices and features of top AI models including Llama 3, Mixtral, and more. Pay with Bitcoin Lightning.",
   openGraph: {

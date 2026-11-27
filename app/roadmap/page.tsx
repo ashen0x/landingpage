@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Roadmap - Routstr",
+  title: "Roadmap",
   description: "Follow our journey to building a decentralized AI ecosystem. See upcoming features and milestones for Routstr.",
 };
 
