@@ -444,21 +444,26 @@
     right: 0;
     left: auto;
   }
+  /* a phone has room for a name and one measure: the one the page counts in (sats when it counts
+     tokens), so the name is read whole */
   .st-cols,
   .st-row {
-    grid-template-columns: minmax(0, 1fr) 6.5rem 6.5rem;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 7.4rem;
+    gap: 12px;
+  }
+  :is(.st-cols, .st-row) > :nth-child(2) {
+    display: none;
+  }
+  :is(.st-cols, .st-row):has(> :nth-child(2)[data-by]) > :nth-child(2) {
+    display: grid;
+  }
+  :is(.st-cols, .st-row):has(> :nth-child(2)[data-by]) > :nth-child(3) {
+    display: none;
   }
   .st-share,
   .st-over {
-    grid-template-columns: minmax(0, 1fr) 2.5rem;
-    gap: 4px;
-  }
-  .st-share b {
-    font-size: 12.5px;
-  }
-  .st-over em {
-    visibility: hidden;
+    grid-template-columns: minmax(0, 1fr) 2.9rem;
+    gap: 8px;
   }
   .st-cols {
     font-size: 10.5px;
@@ -466,5 +471,10 @@
   }
   .st-share u {
     display: none;
+  }
+  /* the name of a list and the ways to split it each take a line */
+  .st-head {
+    flex-wrap: wrap;
+    gap: 4px 16px;
   }
 }
