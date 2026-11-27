@@ -208,9 +208,10 @@
   /* light added to the page, so its black is the page's own */
   mix-blend-mode: screen;
 }
-/* by day the light is drawn as ink on paper, as the strip on the other pages is */
+/* by day the light is drawn as ink on paper: dimmed before it is turned over, so its thick parts
+   stay a soft blue-grey and not a black mass, and its colour raised after, so gold stays gold */
 :root:not(.dark) .cp-stage canvas {
-  filter: invert(1) hue-rotate(180deg);
+  filter: brightness(0.7) invert(1) hue-rotate(180deg) saturate(1.8);
   mix-blend-mode: multiply;
 }
 /* beside the words: as tall as they usually are, out to the edge of the screen on its right, and
