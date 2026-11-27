@@ -115,7 +115,7 @@ export default function RoutstrdPage() {
           <Steps
             steps={[
               ["Finds", "Nodes list themselves on Nostr. It looks again every 21 minutes."],
-              ["Picks", "The cheapest node a reviewer approved."],
+              ["Picks", "The cheapest node that passed review."],
               ["Pays", "From its own wallet. Sats left on a node come back on their own."],
               ["Moves on", "A node that fails sits out a while, longer if it keeps failing. The next one takes over."],
             ]}

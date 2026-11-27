@@ -348,7 +348,7 @@ export default function PricesPage() {
                 <span>{line.rank ?? "—"}</span>
                 <span>
                   {line.name}
-                  {!line.approved && <i>not approved</i>}
+                  {!line.approved && <i>not routed</i>}
                 </span>
                 <span>{money(line)}</span>
                 <span className="pr-vs">{versus(line.multiplier)}</span>
@@ -402,7 +402,7 @@ export default function PricesPage() {
         <p className="pg-lede">
           {inUse.length > 0 ? (
             <>
-              Apps send each request to the cheapest approved node. <b>{inUse.length}</b> nodes compete for{" "}
+              Apps send each request to the cheapest node that passed review. <b>{inUse.length}</b> nodes compete for{" "}
               <b>{won.toLocaleString("en-US")}</b> models. Pick one to see where it stands.
             </>
           ) : loading ? (
@@ -450,12 +450,12 @@ export default function PricesPage() {
                 {others.length > 0 && (
                   <>
                     <button type="button" className="pr-fold" aria-expanded={othersOpen} onClick={() => setOthersOpen(!othersOpen)}>
-                      {others.length} more {others.length === 1 ? "node is" : "nodes are"} not approved
+                      {others.length} more {others.length === 1 ? "node has" : "nodes have"} no passing review
                       <ChevronDown aria-hidden="true" />
                     </button>
                     {othersOpen && (
                       <>
-                        <p className="pr-why">Apps do not send requests to a node until a reviewer approves it.</p>
+                        <p className="pr-why">Apps do not send requests to a node until it passes a review.</p>
                         <div className="pr-nodes">{others.map((line) => nodeLine(line, false))}</div>
                       </>
                     )}
@@ -472,7 +472,7 @@ export default function PricesPage() {
                 {!mine
                   ? "and the node that wins it"
                   : !mine.node.approved
-                    ? "is not approved, so apps do not send it requests"
+                    ? "has no passing review, so apps do not send it requests"
                     : mine.served === null
                       ? `is the cheapest on ${mine.first} of its ${mine.models} models`
                       : `served ${formatCompactCount(mine.served)} requests in 30 days, and is the cheapest on ${mine.first} of its ${mine.models} models`}
@@ -524,7 +524,7 @@ export default function PricesPage() {
                       </option>
                     ))}
                     {others.length > 0 && (
-                      <optgroup label="Not approved">
+                      <optgroup label="No passing review">
                         {others.map((line) => (
                           <option key={line.node.url} value={line.node.url}>
                             {line.node.name}

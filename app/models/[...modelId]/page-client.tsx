@@ -302,7 +302,7 @@ export default function ModelDetailPage() {
                 >
                   <span>
                     {entry.provider.name}
-                    {reviewed && !approved(entry.provider) && <i>not approved</i>}
+                    {reviewed && !approved(entry.provider) && <i>not routed</i>}
                   </span>
                   <span><Money sats={sats}>{price(sats ? entry.model.sats_pricing?.prompt : entry.model.pricing?.prompt, freeAt(entry.model))}</Money></span>
                   <span><Money sats={sats}>{price(sats ? entry.model.sats_pricing?.completion : entry.model.pricing?.completion, freeAt(entry.model))}</Money></span>
@@ -338,15 +338,15 @@ export default function ModelDetailPage() {
                 <small>
                   {sats ? "sats" : "USD"} per 1M tokens.{" "}
                   {selected === best
-                    ? "It is the cheapest approved node right now."
+                    ? "It is the cheapest node that passed review right now."
                     : !reviewed
                       ? labels
                         ? "The reviews of nodes could not be read just now, so this page cannot say which node apps would pick."
                         : ""
                       : !approved(selected.provider)
-                      ? "This node is not approved, so apps do not send requests to it."
+                      ? "This node has no passing review, so apps do not send requests to it."
                       : best
-                        ? `Apps would send the request to ${best.provider.name}, the cheapest approved node.`
+                        ? `Apps would send the request to ${best.provider.name}, the cheapest node that passed review.`
                         : ""}
                 </small>
               </div>

@@ -558,8 +558,8 @@ export default function ModelsPage() {
         <p className="pg-lede">
           {entries.length > 0 ? (
             <>
-              <b>{total}</b> models from <b>{nodeCount}</b> nodes. Each request goes to the cheapest approved node
-              that has the model you pick.
+              <b>{total}</b> models from <b>{nodeCount}</b> nodes. Each request goes to the cheapest node that
+              passed review and has the model you pick.
             </>
           ) : isLoading ? (
             "Asking the nodes what they sell."
@@ -713,7 +713,7 @@ export default function ModelsPage() {
               </span>
               <span
                 className="pg-end pg-hide"
-                title="One typical request at the cheapest approved node, against OpenRouter's price for it"
+                title="One typical request at the cheapest node that passed review, against OpenRouter's price for it"
               >
                 {sortBy("against", "vs OpenRouter")}
               </span>
@@ -866,7 +866,7 @@ export default function ModelsPage() {
                   >
                     <Link href={`/providers?node=${node.pubkey}`}>
                       {node.name}
-                      {!node.approved && <i>not approved</i>}
+                      {!node.approved && <i>not routed</i>}
                     </Link>
                     <span>{price(sats ? node.sats.prompt : node.usd.prompt, node.route && node.cost === 0 && byToken(node.model))}</span>
                     <span>{price(sats ? node.sats.completion : node.usd.completion, node.route && node.cost === 0 && byToken(node.model))}</span>

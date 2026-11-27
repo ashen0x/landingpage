@@ -161,7 +161,7 @@ export const CAPABILITIES: Capability[] = [
     key: "route",
     name: "Never stuck",
     title: "The cheapest node. Then the next.",
-    line: "routstrd on your machine sends each request to the cheapest node you approved for that model, and to the next one if it fails.",
+    line: "routstrd on your machine sends each request to the cheapest node that passed review for that model, and to the next one if it fails.",
     stat: (m) =>
       m && `${m.backed.toLocaleString("en-US")} models are sold by two nodes or more, so there is always another.`,
     examples: () => [
