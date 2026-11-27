@@ -3,5 +3,5 @@
 :HL["/landingpage/_next/static/css/68bf715b5999a3ea.css","style"]
 :HL["/landingpage/_next/static/css/11a7e36a25dd4771.css","style"]
 :HL["/landingpage/_next/static/css/b0fce8a698116e64.css","style"]
-:HL["/landingpage/_next/static/css/e9cfaca8f5cfd7ff.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"eSmyaHpKLnX2TG7NO4trN"}
+:HL["/landingpage/_next/static/css/995a364807e91b4d.css","style"]
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"W62_xlO8Ie00AHmOGD5wC"}

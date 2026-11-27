@@ -6,4 +6,4 @@
 :HL["/landingpage/_next/static/css/d4343bf26bf5ffa1.css","style"]
 :HL["/landingpage/_next/static/css/6c8494a45bd35ebe.css","style"]
 :HL["/landingpage/_next/static/css/f15df6a4347c08ab.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"models","param":null,"prefetchHints":0,"slots":{"children":{"name":"modelId","param":{"type":"c","key":"muse-spark-1.1","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"eSmyaHpKLnX2TG7NO4trN"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"models","param":null,"prefetchHints":0,"slots":{"children":{"name":"modelId","param":{"type":"c","key":"muse-spark-1.1","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"W62_xlO8Ie00AHmOGD5wC"}
