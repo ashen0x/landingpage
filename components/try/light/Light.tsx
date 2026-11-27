@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { NostrMark, XMark } from "@/components/icons/platformIcons";
 import { Fibres, reach, type Pose } from "@/components/try/light/fibres";
+import { blow } from "@/components/try/light/wind";
 import "./light.css";
 
 const CHAT = "https://chat.routstr.com";
@@ -17,7 +18,7 @@ const GITHUB = "https://github.com/Routstr";
    stands beside the words; on a narrow one it stands above them. */
 const still = { chosen: 0, blur: 1, mark: 0 };
 const WIDE: Pose[] = [
-  { ...still, form: 0, x: 2.25, y: 0.1, yaw: -0.42, pitch: 0.2, roll: -0.34, scale: 1.16, gain: 1, pulse: 0.8 },
+  { ...still, form: 0, x: 2.6, y: 0.1, yaw: -0.42, pitch: 0.2, roll: -0.34, scale: 1.05, gain: 1, pulse: 0.8 },
   { ...still, form: 1, x: 2.2, y: -0.7, yaw: -0.62, pitch: 0.86, roll: 0.05, scale: 0.9, gain: 0.9, pulse: 0.2, chosen: 1, blur: 0.7 },
   { ...still, form: 2, x: 0, y: -1.42, yaw: 0, pitch: 0.12, roll: 0.05, scale: 1, gain: 0.55, pulse: 2.6 },
   { ...still, form: 3, x: -1.98, y: -0.05, yaw: 0.2, pitch: 1.0, roll: 0.3, scale: 0.98, gain: 0.4, pulse: 1.3 },
@@ -198,6 +199,54 @@ function Ln({ children, i = 0 }: { children: React.ReactNode; i?: number }) {
     <span className="ln">
       <span style={{ ["--i" as string]: i }}>{children}</span>
     </span>
+  );
+}
+
+/** What the headline says AI now is, one word at a time. */
+const turns = ["Permissionless.", "Decentralized.", "Private."];
+/** How long a word of the headline has, its coming and going on the wind included. */
+const TURN_MS = 5000;
+
+/** The headline. Its last word is one of three in turn: the three lie on one another. The one that
+    stands is drawn as threads into a point where the light gathers its fibres (`ends`, in pixels
+    of the screen), and the next is spun out of it (wind.ts). While the threads are on their way no
+    word stands in the page. */
+function Headline({ live, ends }: { live: boolean; ends: () => [number, number][] }) {
+  const [at, setAt] = useState(0);
+  const word = useRef(0);
+  const words = useRef<HTMLElement>(null);
+  const air = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (!live || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let still = () => {};
+    const timer = window.setInterval(() => {
+      if (document.hidden || !words.current || !air.current) return;
+      const next = (word.current + 1) % turns.length;
+      const spans = words.current.children;
+      still();
+      still = blow(air.current, spans[word.current] as HTMLElement, spans[next] as HTMLElement, ends, () => setAt(next));
+      word.current = next;
+      setAt(-1);
+    }, TURN_MS);
+    return () => {
+      window.clearInterval(timer);
+      still();
+    };
+  }, [live, ends]);
+  return (
+    <h1 aria-label="AI is now permissionless, decentralized, private.">
+      <Ln>AI is now</Ln>{" "}
+      <Ln i={1}>
+        <b className="lt-turn" aria-hidden="true" ref={words}>
+          {turns.map((word, i) => (
+            <span key={word} data-on={i === at || undefined}>
+              {word}
+            </span>
+          ))}
+        </b>
+      </Ln>
+      <canvas className="lt-wind" ref={air} aria-hidden="true" />
+    </h1>
   );
 }
 
@@ -428,7 +477,12 @@ export function Light() {
   const [at, setAt] = useState(0);
   const jump = useRef<(i: number) => void>(() => {});
   const pluck = useCallback(() => engine.current?.pluck(), []);
-
+  /* the spindle's fibres all leave one point and meet again in another: the two ends of its length */
+  const ends = useCallback(() => {
+    const one = engine.current?.spot(-1.85, 0, 0);
+    const other = engine.current?.spot(1.85, 0, 0);
+    return one && other ? [one, other] : [];
+  }, []);
   useEffect(() => {
     const host = root.current;
     const reel = film.current;
@@ -605,10 +659,7 @@ export function Light() {
         <div className="lt-screen">
           <section className="lt-part lt-hero" data-part data-side="left">
             <div className="lt-in">
-              <h1>
-                <Ln>The open</Ln>{" "}
-                <Ln i={1}>market for AI.</Ln>
-              </h1>
+              <Headline live={scenes[at] === "Start"} ends={ends} />
               <p className="lt-lede">
                 Independent nodes sell the models. Your request takes the best path. You pay for
                 it in sats.

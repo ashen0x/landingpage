@@ -9,7 +9,7 @@
    -> one composite pass that adds the glow, a little lens fringe, tone-maps, and lays grain. */
 
 import { ROUTSTR_MARK_PATH, ROUTSTR_MARK_VIEWBOX_MIN, ROUTSTR_MARK_VIEWBOX_SIZE } from "@/lib/brand";
-import { CAMERA, FOV, Glow, clamp, ease, multiply, perspective, program, rotate, scale, software, translate, type Program, release } from "./kit";
+import { CAMERA, FOV, Glow, clamp, ease, multiply, perspective, program, rotate, scale, software, translate, type Mat, type Program, release } from "./kit";
 
 export type Pose = {
   form: number;
@@ -338,6 +338,8 @@ export class Fibres {
   private lifted = 0;
   /** Drawn on the CPU: keep a still picture that follows the page, never an animation. */
   private frugal = false;
+  /** How the last frame put the shape on the screen. */
+  private cast: Mat | null = null;
   /** Where the page is: 0 for the first pose, 1 for the second, and between. */
   target = 0;
   /** Carries the whole light up the screen: 1 is one full screen. */
@@ -428,6 +430,18 @@ export class Fibres {
     this.pointer = [x, y];
     this.touchTarget = [x * 2, -y * 2];
     if (this.touch[0] < -8) this.touch = [x * 2, -y * 2];
+  }
+
+  /** Where a point of the shape, in the shape's own units, stood on the screen in the last frame:
+   *  pixels from the canvas's top left. Null with no light to draw, or before the first frame. */
+  spot(x: number, y: number, z: number): [number, number] | null {
+    const m = this.cast;
+    if (!m) return null;
+    const w = m[3] * x + m[7] * y + m[11] * z + m[15];
+    return [
+      ((m[0] * x + m[4] * y + m[8] * z + m[12]) / w + 1) * 0.5 * this.w,
+      (1 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w) * 0.5 * this.h,
+    ];
   }
 
   /** A click: the fibres passing under this spot carry a burst of gold away along themselves. */
@@ -547,6 +561,7 @@ export class Fibres {
     ].reduce(multiply);
     const view = multiply(perspective(FOV, aspect, 0.1, 60), translate(0, 0, -CAMERA));
     const mvp = multiply(translate(0, this.lifted * 2, 0), multiply(view, model));
+    this.cast = mvp;
 
     // 1. the fibres, added light on light
     const fibre = this.fibre;

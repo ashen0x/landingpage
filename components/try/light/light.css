@@ -326,6 +326,33 @@
 .lt [data-in] .ln > span {
   transform: none;
 }
+/* the word of the headline that changes: the three lie on one another, the one in turn in sight.
+   A word does not move in the page. It fades under the threads that stand for it while the wind
+   has it (wind.ts), and those are drawn on a canvas laid over the headline. */
+.lt-hero h1 {
+  position: relative;
+}
+.lt-turn {
+  display: inline-grid;
+  font-weight: inherit;
+}
+.lt-turn > span {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transition: opacity 160ms linear;
+}
+.lt-turn > span[data-on] {
+  opacity: 1;
+  transition-duration: 240ms;
+}
+.lt-wind {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
 .lt-lede {
   margin: clamp(18px, 3.2vh, 36px) 0 0;
   font-size: clamp(1.06rem, 1.42vw, 1.3rem);
